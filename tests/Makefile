@@ -1,18 +1,31 @@
 # -*- Makefile -*-
 SHELL=/bin/sh
-############################################
-# derived makefile variables
-OBJ_SERIAL=$(SRC:src/%.f90=Obj-serial/%.o)
-############################################
+CC=gcc
+CFLAGS=-Wall -g -O3 -ffast-math -fomit-frame-pointer
+LDLIBS=-lm
+INCLUDE= -I ../src -I integration
 
-default: serial
+# list of source files
+SRC=prototypes.h datastructures.h velverlet.c force.c utilities.c output.c test_integration.c
+VPATH=../src integration
+OBJ=$(SRC:%.c=%.o)
 
-serial:
-	$(MAKE) $(MFLAGS) -C Obj-$@
+default: integration/test_integration.x
 
 clean:
-	$(MAKE) $(MFLAGS) -C Obj-serial clean
-	$(MAKE) $(MFLAGS) -C examples clean
+	rm -f *.mod *.o integration/test_integration.x
 
-check: serial
-	$(MAKE) $(MFLAGS) -C examples check
+# linker rule
+integration/test_integration.x: $(OBJ)
+	$(CC) -o $@ $(CFLAGS) $^ $(LDLIBS) $(INCLUDE)
+
+# compilation pattern rule for objects
+%.o: %.c
+	$(CC) -c $(CFLAGS) $< $(INCLUDE)
+
+# dependencies
+utilities.o: prototypes.h datastructures.h
+force.o: prototypes.h datastructures.h
+velverlet.o: prototypes.h datastructures.h
+output.o: prototypes.h datastructures.h
+test_integration.o: prototypes.h datastructures.h velverlet.c force.c utilities.c output.c test_integration.c
