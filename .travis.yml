@@ -8,6 +8,5 @@ compiler:
   - gcc
 
 script:
-  - cd ljmd-c
   - make check
 
