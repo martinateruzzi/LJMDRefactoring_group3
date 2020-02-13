@@ -5,7 +5,7 @@ CFLAGS=-Wall -g -O3 -ffast-math -fomit-frame-pointer
 LDLIBS=-lm
 
 # list of source files
-SRC=ljmd.c
+SRC=prototypes.h datastructures.h velverlet.c force.c utilities.c output.c ljmd.c
 VPATH=../src
 OBJ=$(SRC:%.c=%.o)
 
@@ -23,4 +23,8 @@ clean:
 	$(CC) -c $(CFLAGS) $<
 
 # dependencies
-ljmd.o: ljmd.c
+utilities.o: prototypes.h datastructures.h
+force.o: prototypes.h datastructures.h
+velverlet.o: prototypes.h datastructures.h
+output.o: prototypes.h datastructures.h
+ljmd.o: prototypes.h datastructures.h velverlet.c force.c utilities.c output.c ljmd.c
