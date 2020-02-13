@@ -35,6 +35,12 @@ void force(mdsys_t *sys);
 
 /**VELVERLET**/
 
+/* first part: propagate velocities by half and positions by full step */
+void update_velocities_positions(mdsys_t *sys);
+
+/* second part: propagate velocities by another half step */
+void update_velocities(mdsys_t *sys);
+
 /* velocity verlet */
 void velverlet(mdsys_t *sys);
 
