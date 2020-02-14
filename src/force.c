@@ -13,6 +13,14 @@
 
 #include "prototypes.h"
 
+/* helper function: apply minimum image convention */
+static double pbc(double x, const double boxby2)
+{
+    while (x >  boxby2) x -= 2.0*boxby2;
+    while (x < -boxby2) x += 2.0*boxby2;
+    return x;
+}
+
 /* compute forces */
 void force(mdsys_t *sys) 
 {
