@@ -15,16 +15,16 @@ OBJ = $(FIL:.c=.o)
 all: $(EXE)
 
 #$(SOBJ): $(SRC)
-#	$(CC) $(CFLAGS) -c $^
-
-#$(ODIR)/%.o: $(SDIR)/%.c
-#	$(CC) $(CFLAGS) -c $<
+#	$(CC) $(CFLAGS) -c  $^
 
 #$(OBJ): $(FIL)
 #	$(CC) $(CFLAGS) $(LDFLAGS) $(LDLIBS) -c $^
 
-#$(EXE): $(OBJ)
+#$(EXE): $(OBJ) $(SOBJ)
 #	$(CC) $(CFLAGS) $(SOBJ) $(OBJ) -o $@ $(LDLIBS) $(LDFLAGS)
+#--------------------------
+
+
 
 $(EXE):
 	$(CC) $(CFLAGS) $(FIL) $(SRC) -o $(EXE) $(LDLIBS) $(LDFLAGS)
