@@ -1,6 +1,6 @@
 from ctypes import *
 import numpy as np
-import sys
+import sys as _sys
 
 class Mdsys(Structure):
     _fields_ = [
@@ -26,10 +26,12 @@ class Mdsys(Structure):
         ("fy", POINTER(c_double)),
         ("fz", POINTER(c_double)),
         ]
+    
     def __init__(self, initfile):
         self.initfile = initfile
-        if self.initfile:
-            self.loadinit()
+        self.loadinit()
+        self.rvfinit()
+    
     def loadinit(self):
         try:
             self.args = []
@@ -40,8 +42,7 @@ class Mdsys(Structure):
                     self.args.append(line)
         except Exception as err:
             print("Error reading init file: {}".format(str(err)))
-            sys.exit(1)
-
+            _sys.exit(1)
         self.natoms = int(self.args[0])
         self.mass = float(self.args[1])
         self.epsilon = float(self.args[2])
@@ -55,10 +56,28 @@ class Mdsys(Structure):
         self.dt = float(self.args[10])
         self.nprint = int(self.args[11])
 
-    def reloadinit(self):
-        self.loadinit(self)
+    def reloadinit(self, initfile):
+        self.initfile = initfile
+        self.loadinit()
+
+    def rvfinit(self):
+        try:
+            _initarr = np.loadtxt(self.resfile, dtype=c_double)
+        except Exception as err:
+            print("Error reading restart file: {}".format(str(err)))
+            _sys.exit(1)
+        self.rx = _initarr[:,0][:self.natoms]
+        self.ry = _initarr[:,1][:self.natoms]
+        self.rz = _initarr[:,2][:self.natoms]
+        self.vx = _initarr[:,0][self.natoms:]
+        self.vy = _initarr[:,1][self.natoms:]
+        self.vz = _initarr[:,2][self.natoms:]
+        self.fx = np.zeros(self.natoms, dtype=c_double)
+        self.fy = np.zeros(self.natoms, dtype=c_double)
+        self.fz = np.zeros(self.natoms, dtype=c_double)
 
 sys = Mdsys(initfile="../examples/argon_108.inp")
+# sys = Mdsys()
 print(sys.natoms)
 
 """
