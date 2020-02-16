@@ -1,5 +1,6 @@
 from ctypes import *
 import numpy as np
+import sys
 
 class Mdsys(Structure):
     _fields_ = [
@@ -25,7 +26,42 @@ class Mdsys(Structure):
         ("fy", POINTER(c_double)),
         ("fz", POINTER(c_double)),
         ]
+    def __init__(self, initfile):
+        self.initfile = initfile
+        if self.initfile:
+            self.loadinit()
+    def loadinit(self):
+        try:
+            self.args = []
+            with open(self.initfile, 'r') as file:
+                for line in file:
+                    line = line.split("#", 1)[0]
+                    line = line.rstrip()
+                    self.args.append(line)
+        except Exception as err:
+            print("Error reading init file: {}".format(str(err)))
+            sys.exit(1)
 
+        self.natoms = int(self.args[0])
+        self.mass = float(self.args[1])
+        self.epsilon = float(self.args[2])
+        self.sigma = float(self.args[3])
+        self.rcut = float(self.args[4])
+        self.box = float(self.args[5])
+        self.restfile = str(self.args[6])
+        self.trajfile = str(self.args[7])
+        self.ergfile = str(self.args[8])
+        self.nsteps = int(self.args[9])
+        self.dt = float(self.args[10])
+        self.nprint = int(self.args[11])
+
+    def reloadinit(self):
+        self.loadinit(self)
+
+sys = Mdsys(initfile="../examples/argon_108.inp")
+print(sys.natoms)
+
+"""
 libkinetic = CDLL("./libkinetic.so")
 ekin = libkinetic.ekin
 ekin.argtypes = [POINTER(Mdsys)]
@@ -94,3 +130,5 @@ for i in range(natoms):
 force(byref(sys))
 for i in range(natoms):
     print(sys.fx[i], sys.fy[i], sys.fz[i])
+nprint = int()
+"""
