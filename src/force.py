@@ -31,6 +31,7 @@ class Mdsys(Structure):
         self.initfile = initfile
         self.loadinit()
         self.rvfinit()
+        self.loadengine()
     
     def loadinit(self):
         try:
@@ -55,6 +56,7 @@ class Mdsys(Structure):
         self.nsteps = int(self.args[9])
         self.dt = float(self.args[10])
         self.nprint = int(self.args[11])
+        self.nfi = 0
 
     def reloadinit(self, initfile):
         self.initfile = initfile
@@ -62,24 +64,56 @@ class Mdsys(Structure):
 
     def rvfinit(self):
         try:
-            _initarr = np.loadtxt(self.resfile, dtype=c_double)
+            _initarr = np.loadtxt(self.restfile, dtype=c_double)
         except Exception as err:
             print("Error reading restart file: {}".format(str(err)))
             _sys.exit(1)
-        self.rx = _initarr[:,0][:self.natoms]
-        self.ry = _initarr[:,1][:self.natoms]
-        self.rz = _initarr[:,2][:self.natoms]
-        self.vx = _initarr[:,0][self.natoms:]
-        self.vy = _initarr[:,1][self.natoms:]
-        self.vz = _initarr[:,2][self.natoms:]
-        self.fx = np.zeros(self.natoms, dtype=c_double)
-        self.fy = np.zeros(self.natoms, dtype=c_double)
-        self.fz = np.zeros(self.natoms, dtype=c_double)
+        _dblp = POINTER(c_double)
+        _rx = _initarr[:,0][:self.natoms]
+        _ry = _initarr[:,1][:self.natoms]
+        _rz = _initarr[:,2][:self.natoms]
+        _vx = _initarr[:,0][self.natoms:]
+        _vy = _initarr[:,1][self.natoms:]
+        _vz = _initarr[:,2][self.natoms:]
+        _fx = np.zeros(self.natoms, dtype=c_double)
+        _fy = np.zeros(self.natoms, dtype=c_double)
+        _fz = np.zeros(self.natoms, dtype=c_double)
+        self.rx = _rx.ctypes.data_as(_dblp)
+        self.ry = _ry.ctypes.data_as(_dblp)
+        self.rz = _rz.ctypes.data_as(_dblp)
+        self.vx = _vx.ctypes.data_as(_dblp)
+        self.vy = _vy.ctypes.data_as(_dblp)
+        self.vz = _vz.ctypes.data_as(_dblp)
+        self.fx = _fx.ctypes.data_as(_dblp)
+        self.fy = _fy.ctypes.data_as(_dblp)
+        self.fz = _fz.ctypes.data_as(_dblp)
+
+    def loadengine(self):
+        self._dll = CDLL("./libljmd.so")
+        self._dll.force.argtypes = [POINTER(Mdsys)]
+        self._dll.force.restype = None
+        self._dll.ekin.argtypes = [POINTER(Mdsys)]
+        self._dll.ekin.restype = None
+        self._dll.velverlet.argtypes = [POINTER(Mdsys)]
+        self._dll.velverlet.restype = None
+
+    def force(self):
+        self._dll.force(byref(self))
+
+    def ekin(self):
+        self._dll.ekin(byref(self))
+
+    def velverlet(self):
+        self._dll.velverlet(byref(self))
+
 
 sys = Mdsys(initfile="../examples/argon_108.inp")
+sys.loadengine()
+
 # sys = Mdsys()
 print(sys.natoms)
-
+print(sys.force())
+# print(sys.ekin())
 """
 libkinetic = CDLL("./libkinetic.so")
 ekin = libkinetic.ekin
