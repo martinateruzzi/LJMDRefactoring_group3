@@ -13,4 +13,10 @@ kinetic:
 io:
 	$(MAKE) -C io
 
-.PHONY: force integration kinetic io
+.PHONY: force integration kinetic io clean
+
+clean:
+	$(MAKE) clean -C force
+	$(MAKE) clean -C integration
+	$(MAKE) clean -C kinetic
+	$(MAKE) clean -C io
