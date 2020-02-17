@@ -9,7 +9,7 @@ int main(int argc, char **argv)
 {
     int nprint, i;
     char restfile[BLEN], trajfile[BLEN], ergfile[BLEN], line[BLEN], frcfile[BLEN];
-    FILE *fp, *trj, *erg, *frc;
+    FILE *fp, *frc;
     mdsys_t sys;
 
     /* read input file */

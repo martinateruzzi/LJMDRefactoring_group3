@@ -4,6 +4,8 @@
  *
  * baseline c version.
  */
+#ifndef PROTOTYPES_H
+#define PROTOTYPES_H
 
 #include <stdio.h>
 #include <string.h>
@@ -48,3 +50,5 @@ void ekin(mdsys_t *sys);
 
 /* append data to output. */
 void output(mdsys_t *sys, FILE *erg, FILE *traj);
+
+#endif
