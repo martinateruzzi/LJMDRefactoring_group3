@@ -4,6 +4,8 @@
  *
  * baseline c version.
  */
+#ifndef PROTOTYPES_H
+#define PROTOTYPES_H
 
 #include <stdio.h>
 #include <string.h>
@@ -25,15 +27,18 @@ int get_a_line(FILE *fp, char *buf);
 /* helper function: zero out an array */
 void azzero(double *d, const int n);
 
-/* helper function: apply minimum image convention */
-double pbc(double x, const double boxby2);
-
 /**FORCE**/
 
 /* compute forces */
 void force(mdsys_t *sys);
 
 /**VELVERLET**/
+
+/* first part: propagate velocities by half and positions by full step */
+void update_velocities_positions(mdsys_t *sys);
+
+/* second part: propagate velocities by another half step */
+void update_velocities(mdsys_t *sys);
 
 /* velocity verlet */
 void velverlet(mdsys_t *sys);
@@ -45,3 +50,5 @@ void ekin(mdsys_t *sys);
 
 /* append data to output. */
 void output(mdsys_t *sys, FILE *erg, FILE *traj);
+
+#endif

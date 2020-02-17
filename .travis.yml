@@ -8,5 +8,7 @@ compiler:
   - gcc
 
 script:
+  - make
   - make check
+  - make test
 

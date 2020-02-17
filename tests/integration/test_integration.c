@@ -1,15 +1,24 @@
+/* 
+ * simple lennard-jones potential MD code with velocity verlet.
+ * units: Length=Angstrom, Mass=amu; Energy=kcal
+ *
+ * baseline c version.
+ */
+
 #include <stdio.h>
+#include <string.h>
+#include <ctype.h>
 #include <stdlib.h>
+#include <math.h>
 
 #include "prototypes.h"
-
 
 /* main */
 int main(int argc, char **argv) 
 {
     int nprint, i;
-    char restfile[BLEN], trajfile[BLEN], ergfile[BLEN], line[BLEN], frcfile[BLEN];
-    FILE *fp, *frc;
+    char restfile[200], trajfile[200], ergfile[200], line[200];
+    FILE *fp,*traj,*erg;
     mdsys_t sys;
 
     /* read input file */
@@ -28,7 +37,6 @@ int main(int argc, char **argv)
     if(get_a_line(stdin,restfile)) return 1;
     if(get_a_line(stdin,trajfile)) return 1;
     if(get_a_line(stdin,ergfile)) return 1;
-    if(get_a_line(stdin,frcfile)) return 1;
     if(get_a_line(stdin,line)) return 1;
     sys.nsteps=atoi(line);
     if(get_a_line(stdin,line)) return 1;
@@ -67,32 +75,40 @@ int main(int argc, char **argv)
 
     /* initialize forces and energies.*/
     sys.nfi=0;
-    force(&sys);
-    ekin(&sys);
-    frc=fopen(frcfile, "w");
 
-    /**************************************************/
-    /* main MD loop */
-    for(sys.nfi=1; sys.nfi <= sys.nsteps; ++sys.nfi) {
+    update_velocities_positions(&sys);
 
-        /* write output, if requested */
-        if ((sys.nfi % nprint) == 0){
-            /* write force to file if requested */
-            for(i=0; i < sys.natoms; ++i)
-            {
-                printf("%.3f, %.3f, %.3f\n", sys.fx[i], sys.fy[i], sys.fz[i]);
-                fprintf(frc, "%.3f, %.3f, %.3f\n", sys.fx[i], sys.fy[i], sys.fz[i]);
-            }
-        }
-        /* propagate system and recompute energies */
-        velverlet(&sys);
-        ekin(&sys);
-    }
-    /**************************************************/
+	/* setting forces manually */
+	for (i=0; i<sys.natoms; ++i) {
+		sys.fx[i] = i*10e4-0.5;	
+		sys.fy[i] = -i*10e4+0.5;	
+		sys.fz[i] = i*10e4+0.5;	
+	}
+    
+	update_velocities(&sys);
+
+	
+
+    //force(&sys);
+    //ekin(&sys);
+    
+    erg=fopen(ergfile,"w");
+    traj=fopen(trajfile,"w");
+
+	for (i=0; i<sys.natoms; ++i) {
+		fprintf(erg, "Ar  %20.8f %20.8f %20.8f\n", sys.rx[i], sys.ry[i], sys.rz[i]);
+	}
+
+	fprintf(erg, "\n");
+
+	for (i=0; i<sys.natoms; ++i) {
+		fprintf(erg, "Ar  %20.8f %20.8f %20.8f\n", sys.vx[i], sys.vy[i], sys.vz[i]);
+	}
 
     /* clean up: close files, free memory */
-    printf("Force have be calculated!\n");
-    fclose(frc);
+    printf("Test integration Done.\n");
+    fclose(erg);
+    fclose(traj);
 
     free(sys.rx);
     free(sys.ry);
