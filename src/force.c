@@ -25,9 +25,9 @@ static double pbc(double x, const double boxby2)
 void force(mdsys_t *sys) 
 {
 //	sys->epot=0.0;
-    	double epot = 0.0 ;
+    	double epot = 0.0;
 
-#pragma omp parallel  reduction(+:epot)
+#pragma omp parallel reduction(+:epot)
 {
 	int nthreads = omp_get_num_threads();
 	double *fx, *fy, *fz;
@@ -76,8 +76,8 @@ void force(mdsys_t *sys)
         	}	 
     	}
 	i = 1 + (sys->natoms / nthreads);
-	printf("numth: %d ", nthreads);
-	printf("tid: %d\n", tid);
+//	printf("numth: %d ", nthreads);
+//	printf("tid: %d\n", tid);
 	int fromidx = tid * i;
 	int toidx = fromidx + i;
 	if (toidx > sys->natoms) toidx = sys->natoms;
@@ -91,8 +91,9 @@ void force(mdsys_t *sys)
 		}
 
 }
-   sys->epot = epot;
- printf("\n I am %f \n", sys->epot);
+ 
+ sys->epot = epot;
+ printf("\n I am epot  %f, and %f \n",epot , sys->epot);
 }
 
 
