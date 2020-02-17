@@ -10,7 +10,7 @@ int main (int argc, char **argv )
  
   int nprint, i;
   char restfile[BLEN], trajfile[BLEN], ergfile[BLEN], line[BLEN];
-  FILE *fp,*traj,*erg;
+  FILE *fp;
   mdsys_t sys;
 
   /* TEST SYS*/
