@@ -10,6 +10,7 @@
 #include <ctype.h>
 #include <stdlib.h>
 #include <math.h>
+#include <mpi.h>
 
 #include "prototypes.h"
 
@@ -24,12 +25,19 @@
 /* main */
 int main(int argc, char **argv) 
 {
-    int nprint, i;
-    char restfile[BLEN], trajfile[BLEN], ergfile[BLEN], line[BLEN];
-    FILE *fp,*traj,*erg;
-    mdsys_t sys;
+  int nprint, i;
+  char restfile[BLEN], trajfile[BLEN], ergfile[BLEN], line[BLEN];
+  FILE *fp,*traj,*erg;
+  mdsys_t sys;
 
-    /* read input file */
+  sys.mpicomm=MPI_COMM_WORLD;
+  MPI_Init(&argc,&argv);
+  MPI_Comm_rank(sys.mpicomm,&sys.mpirank);
+  MPI_Comm_size(sys.mpicomm,&sys.nprocs);
+ 
+
+  /* read input file */
+  if(sys.mpirank==0){
     if(get_a_line(stdin,line)) return 1;
     sys.natoms=atoi(line);
     if(get_a_line(stdin,line)) return 1;
@@ -51,76 +59,105 @@ int main(int argc, char **argv)
     sys.dt=atof(line);
     if(get_a_line(stdin,line)) return 1;
     nprint=atoi(line);
+  }
 
-    /* allocate memory */
-    sys.rx=(double *)malloc(sys.natoms*sizeof(double));
-    sys.ry=(double *)malloc(sys.natoms*sizeof(double));
-    sys.rz=(double *)malloc(sys.natoms*sizeof(double));
-    sys.vx=(double *)malloc(sys.natoms*sizeof(double));
-    sys.vy=(double *)malloc(sys.natoms*sizeof(double));
-    sys.vz=(double *)malloc(sys.natoms*sizeof(double));
+  sys.nsize=sys.natoms/sys.nprocs;
+   
+  MPI_Bcast(&sys.dt,1,MPI_DOUBLE,0,sys.mpicomm);
+  MPI_Bcast(&sys.nsteps,1,MPI_DOUBLE,0,sys.mpicomm);
+  MPI_Bcast(&sys.box,1,MPI_DOUBLE,0,sys.mpicomm);
+  MPI_Bcast(&sys.rcut,1,MPI_DOUBLE,0,sys.mpicomm);
+  MPI_Bcast(&sys.natoms,1,MPI_DOUBLE,0,sys.mpicomm); 
+  MPI_Bcast(&sys.sigma,1,MPI_DOUBLE,0,sys.mpicomm);
+  MPI_Bcast(&sys.epsilon,1,MPI_DOUBLE,0,sys.mpicomm);
+  MPI_Bcast(&sys.mass,1,MPI_DOUBLE,0,sys.mpicomm);
+  
+  /* allocate memory */
+
+  sys.rx=(double *)malloc(sys.natoms*sizeof(double));
+  sys.ry=(double *)malloc(sys.natoms*sizeof(double));
+  sys.rz=(double *)malloc(sys.natoms*sizeof(double));
+  sys.vx=(double *)malloc(sys.natoms*sizeof(double));
+  sys.vy=(double *)malloc(sys.natoms*sizeof(double));
+  sys.vz=(double *)malloc(sys.natoms*sizeof(double));
+  /*only rank 0*/
+  if (sys.mpirank==0){
     sys.fx=(double *)malloc(sys.natoms*sizeof(double));
     sys.fy=(double *)malloc(sys.natoms*sizeof(double));
     sys.fz=(double *)malloc(sys.natoms*sizeof(double));
+  }
+  /*buffers*/
+  sys.cx=(double *)malloc(sys.natoms*sizeof(double));
+  sys.cy=(double *)malloc(sys.natoms*sizeof(double));
+  sys.cz=(double *)malloc(sys.natoms*sizeof(double));
+    
 
-    /* read restart */
+  /* read restart */
+  if (sys.mpirank==0){
     fp=fopen(restfile,"r");
     if(fp) {
-        for (i=0; i<sys.natoms; ++i) {
-            fscanf(fp,"%lf%lf%lf",sys.rx+i, sys.ry+i, sys.rz+i);
-        }
-        for (i=0; i<sys.natoms; ++i) {
-            fscanf(fp,"%lf%lf%lf",sys.vx+i, sys.vy+i, sys.vz+i);
-        }
-        fclose(fp);
-        azzero(sys.fx, sys.natoms);
-        azzero(sys.fy, sys.natoms);
-        azzero(sys.fz, sys.natoms);
+      for (i=0; i<sys.natoms; ++i) {
+	fscanf(fp,"%lf%lf%lf",sys.rx+i, sys.ry+i, sys.rz+i);
+      }
+      for (i=0; i<sys.natoms; ++i) {
+	fscanf(fp,"%lf%lf%lf",sys.vx+i, sys.vy+i, sys.vz+i);
+      }
+      fclose(fp);
+      azzero(sys.fx, sys.natoms);
+      azzero(sys.fy, sys.natoms);
+      azzero(sys.fz, sys.natoms);
     } else {
-        perror("cannot read restart file");
-        return 3;
+      perror("cannot read restart file");
+      return 3;
     }
-
-    /* initialize forces and energies.*/
-    sys.nfi=0;
-    force(&sys);
-    ekin(&sys);
-    
+  }
+  MPI_Barrier(sys.mpicomm);
+  /* initialize forces and energies.*/
+  sys.nfi=0;
+  force(&sys);
+   
+  if(sys.mpirank==0){
     erg=fopen(ergfile,"w");
     traj=fopen(trajfile,"w");
+    ekin(&sys);
 
     printf("Starting simulation with %d atoms for %d steps.\n",sys.natoms, sys.nsteps);
     printf("     NFI            TEMP            EKIN                 EPOT              ETOT\n");
     output(&sys, erg, traj);
+  }
+  /**************************************************/
+  /* main MD loop */
+  for(sys.nfi=1; sys.nfi <= sys.nsteps; ++sys.nfi) {
 
-    /**************************************************/
-    /* main MD loop */
-    for(sys.nfi=1; sys.nfi <= sys.nsteps; ++sys.nfi) {
+    /* write output, if requested */
+    if ((sys.nfi % nprint) == 0 && sys.mpirank==0)
+      output(&sys, erg, traj);
 
-        /* write output, if requested */
-        if ((sys.nfi % nprint) == 0)
-            output(&sys, erg, traj);
-
-        /* propagate system and recompute energies */
-        velverlet(&sys);
-        ekin(&sys);
+    /* propagate system and recompute energies */
+    if(sys.mpirank==0){
+      velverlet(&sys);
+      ekin(&sys);
     }
-    /**************************************************/
+  }
+  /**************************************************/
 
-    /* clean up: close files, free memory */
+  /* clean up: close files, free memory */
+  if(sys.mpirank==0){
     printf("Simulation Done.\n");
     fclose(erg);
     fclose(traj);
-
-    free(sys.rx);
-    free(sys.ry);
-    free(sys.rz);
-    free(sys.vx);
-    free(sys.vy);
-    free(sys.vz);
     free(sys.fx);
     free(sys.fy);
     free(sys.fz);
+  }
 
-    return 0;
+  free(sys.rx);
+  free(sys.ry);
+  free(sys.rz);
+  free(sys.vx);
+  free(sys.vy);
+  free(sys.vz);
+    
+  MPI_Finalize();
+  return 0;
 }
