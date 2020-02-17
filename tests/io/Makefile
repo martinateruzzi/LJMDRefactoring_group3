@@ -19,7 +19,7 @@ all: $(EXE)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 %.x: %.o 
-	$(CC) $(LDFLAGS) $(LDLIBS) $< -o $@
+	$(CC) $< -o $@ $(LDFLAGS) $(LDLIBS) 
 
 .PHONY: clean
 
