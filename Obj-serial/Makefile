@@ -1,7 +1,7 @@
 # -*- Makefile -*-
 SHELL=/bin/sh
 CC=gcc
-CFLAGS=-Wall -g -O3 -ffast-math -fomit-frame-pointer -fexpensive-optimizations -msse3
+CFLAGS=-Wall -g -O3 -ffast-math -fomit-frame-pointer -fexpensive-optimizations -msse3 -DOPENMP -fopenmp
 LDLIBS=-lm
 
 # list of source files
