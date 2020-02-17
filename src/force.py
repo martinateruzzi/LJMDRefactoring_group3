@@ -88,6 +88,22 @@ class Mdsys(Structure):
         self.fy = _fy.ctypes.data_as(_dblp)
         self.fz = _fz.ctypes.data_as(_dblp)
 
+    def output(self):
+        _ergstr = "{:8} {:20.8} {:20.8} {:20.8} {:20.8}\n".format(
+            self.nfi, self.temp, self.ekin, self.epot, self.ekin+self.epot)
+        print(_ergstr)
+        try:
+            with open(self.ergfile, "a") as file:
+                file.write(_ergstr)
+        except Exception as err:
+            print("Error reading file: {}".format(str(err)))
+
+        try:
+            with open(self.trajfile, "a") as file:
+                file.write("nfil = {:8} \t etot = {:.8}".format(
+                    self.nfi, self.ekin+self.epot))
+                
+
     def loadengine(self):
         self._dll = CDLL("./libljmd.so")
         self._dll.force.argtypes = [POINTER(Mdsys)]
