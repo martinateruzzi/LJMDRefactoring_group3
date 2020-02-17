@@ -4,6 +4,8 @@
  *
  * baseline c version.
  */
+#ifndef PROTOTYPES_H
+#define PROTOTYPES_H
 
 #include <stdio.h>
 #include <string.h>
@@ -11,20 +13,10 @@
 #include <stdlib.h>
 #include <math.h>
 
+#include "datastructures.h"
+
 /* generic file- or pathname buffer length */
 #define BLEN 200
-
-/* structure to hold the complete information 
- * about the MD system */
-struct _mdsys {
-    int natoms,nfi,nsteps;
-    double dt, mass, epsilon, sigma, box, rcut;
-    double ekin, epot, temp;
-    double *rx, *ry, *rz;
-    double *vx, *vy, *vz;
-    double *fx, *fy, *fz;
-};
-typedef struct _mdsys mdsys_t;
 
 /**UTILITIES**/
 
@@ -58,3 +50,5 @@ void ekin(mdsys_t *sys);
 
 /* append data to output. */
 void output(mdsys_t *sys, FILE *erg, FILE *traj);
+
+#endif
