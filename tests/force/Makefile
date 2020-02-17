@@ -11,7 +11,7 @@ ODIR := ../../obj
 CC := gcc
 CFLAGS := -Wall -g -O3 -ffast-math -fomit-frame-pointer  -I $(IDIR)
 LDLIBS := -lm -lljmd
-LDFLAGS :=  -L $(SDIR)
+LDFLAGS :=  -L $(ODIR)
 
 all: $(EXE)
 
