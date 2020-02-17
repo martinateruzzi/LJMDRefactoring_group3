@@ -24,4 +24,4 @@ all: $(EXE)
 .PHONY: clean
 
 clean:
-	rm *.x *.o
+	rm *.x
