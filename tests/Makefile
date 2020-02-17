@@ -16,7 +16,7 @@ io:
 .PHONY: force integration kinetic io clean
 
 clean:
-	$(MAKE) clean -C force
-	$(MAKE) clean -C integration
-	$(MAKE) clean -C kinetic
-	$(MAKE) clean -C io
+	$(MAKE) $(MFLAGS) -C force
+	$(MAKE) $(MFLAGS) -C integration
+	$(MAKE) $(MFLAGS) -C kinetic
+	$(MAKE) $(MFLAGS) -C io
