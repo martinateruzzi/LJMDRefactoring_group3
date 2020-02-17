@@ -76,13 +76,20 @@ int main(int argc, char **argv)
     /* initialize forces and energies.*/
     sys.nfi=0;
 
+	/* setting forces manually */
+	for (i=0; i<sys.natoms; ++i) {
+		sys.fx[i] = i*10e3;	
+		sys.fy[i] = -i*10e3;	
+		sys.fz[i] = i*10e3;	
+	}
+    
     update_velocities_positions(&sys);
 
 	/* setting forces manually */
 	for (i=0; i<sys.natoms; ++i) {
-		sys.fx[i] = i*10e4-0.5;	
-		sys.fy[i] = -i*10e4+0.5;	
-		sys.fz[i] = i*10e4+0.5;	
+		sys.fx[i] = i*10e4;	
+		sys.fy[i] = -i*10e3;	
+		sys.fz[i] = i*10e4;	
 	}
     
 	update_velocities(&sys);
