@@ -7,7 +7,7 @@ OBJ_SERIAL=$(SRC:src/%.f90=Obj-serial/%.o)
 
 default: serial
 
-serial:
+serial: 
 	$(MAKE) $(MFLAGS) -C Obj-$@
 
 clean:
@@ -16,3 +16,8 @@ clean:
 
 check: serial
 	$(MAKE) $(MFLAGS) -C examples check
+
+test : default
+	$(MAKE) -C tests
+
+.PHONY: test default
