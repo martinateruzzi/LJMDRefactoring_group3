@@ -5,6 +5,9 @@
  * baseline c version.
  */
 
+#ifndef DATASTRUCTURE_H
+#define DATASTRUCTURE_H
+
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
@@ -22,3 +25,5 @@ struct _mdsys {
     double *fx, *fy, *fz;
 };
 typedef struct _mdsys mdsys_t;
+
+#endif
