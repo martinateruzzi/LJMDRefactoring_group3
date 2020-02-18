@@ -31,27 +31,30 @@ void force(mdsys_t *sys)
     	c12 =4.0 * sys->epsilon * sigma6 * sigma6;
     	rcsq = sys->rcut * sys->rcut;
 
-
 #pragma omp parallel reduction(+:epot)
 {
 	int nthreads = omp_get_num_threads();
-	int tid=omp_get_thread_num();
-	int N = nthreads * sys->natoms;
 	
- 	double *fx, *fy, *fz;
-	
-	printf( "check ");	
+//	printf("I arrived after nthreads\n");
 
-   	
+	int tid = omp_get_thread_num();
+//	int N = nthreads * sys->natoms;
+	
+//	printf("I read openmp function %d \n", tid);
+ 	double *fx, *fy, *fz;
+  //	printf(" I am befor rx,.. \n%d", tid);
+
 	double ffac, rsq;
     	double rx,ry,rz;
     	int i,j;
+//	printf("I am after rx...\n %d", tid);
+
     /* zero energy and forces */
 
 //	printf("%d", tid);
- 	fx = sys->fx + (tid*sys->natoms); 	azzero( fx, N );
-	fy = sys->fy + (tid*sys->natoms); 	azzero( fy, N );
-	fz = sys->fz + (tid*sys->natoms); 	azzero( fz, N );
+ 	fx = sys->fx + (tid * sys->natoms); 	azzero( fx, sys->natoms );
+	fy = sys->fy + (tid * sys->natoms); 	azzero( fy, sys->natoms );
+	fz = sys->fz + (tid * sys->natoms); 	azzero( fz, sys->natoms );
 	
 
 	for(i = tid; i < (sys->natoms)-1 ; i += nthreads) {
@@ -80,11 +83,13 @@ void force(mdsys_t *sys)
             		}
         	}	 
     	}
+	
+#pragma omp barrier
+
 	i = 1 + ( sys->natoms / nthreads );
 //	printf("numth: %d ", nthreads);
 //	printf("tid: %d\n", tid);
-
-	#pragma omp barrier
+	
 	int fromidx = tid * i;
 	int toidx = fromidx + i;
 	if (toidx > sys->natoms) toidx = sys->natoms;
