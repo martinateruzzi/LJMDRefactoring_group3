@@ -21,7 +21,11 @@ all: $(EXE)
 %.x: %.o 
 	$(CC) $< -o $@ $(LDFLAGS) $(LDLIBS) 
 
-.PHONY: clean
+.PHONY: clean run
+
+run: $(EXE)
+	export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:$(ODIR)
+	./$(EXE) < argon_003.inp
 
 clean:
-	rm *.x 
+	rm *.x *.frc 
