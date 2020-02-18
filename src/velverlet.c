@@ -24,21 +24,12 @@ void update_velocities_positions(mdsys_t *sys)
 
     /* first part: propagate velocities by half and positions by full step */
     for (i=0; i<sys->natoms; ++i) {
-	//printf("loop %d",i);
-	//printf("natoms %d",sys->natoms);
-	//printf("for loop velverlet ok %d total",i);
         sys->vx[i] += 0.5*sys->dt / mvsq2e * sys->fx[i] / sys->mass;
-        //printf("for loop velverlet ok %d fx",i);
 	sys->vy[i] += 0.5*sys->dt / mvsq2e * sys->fy[i] / sys->mass;
-        //printf("for loop velverlet ok %d fy",i);
 	sys->vz[i] += 0.5*sys->dt / mvsq2e * sys->fz[i] / sys->mass;
-        //printf("for loop velverlet ok %d fz",i);
 	sys->rx[i] += sys->dt*sys->vx[i];
-        //printf("for loop velverlet ok %d vx",i);
 	sys->ry[i] += sys->dt*sys->vy[i];
-        //printf("for loop velverlet ok %d vy",i);
 	sys->rz[i] += sys->dt*sys->vz[i];
-	//printf("for loop velverlet ok %d vz",i);
     }
 
 }
@@ -50,7 +41,6 @@ void update_velocities(mdsys_t *sys)
 
     /* second part: propagate velocities by another half step */
     for (i=0; i<sys->natoms; ++i) {
-	   // printf("second loop velverlet %d",i);
         sys->vx[i] += 0.5*sys->dt / mvsq2e * sys->fx[i] / sys->mass;
         sys->vy[i] += 0.5*sys->dt / mvsq2e * sys->fy[i] / sys->mass;
         sys->vz[i] += 0.5*sys->dt / mvsq2e * sys->fz[i] / sys->mass;

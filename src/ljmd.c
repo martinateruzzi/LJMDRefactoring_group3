@@ -83,9 +83,6 @@ int main(int argc, char **argv)
   sys.vy=(double *)malloc(sys.natoms*sizeof(double));
   sys.vz=(double *)malloc(sys.natoms*sizeof(double));
   
-  for (i=0;i<sys.natoms;++i){
-  printf("%d vx %f vy %f vz %f",i,sys.vx[i],sys.vy[i],sys.vz[i]);
-  }
   /*only rank 0*/
   if (sys.mpirank==0){
     sys.fx=(double *)malloc(sys.natoms*sizeof(double));
@@ -141,13 +138,8 @@ int main(int argc, char **argv)
 
 
 
-    /* propagate system and recompute energies 
-    if(sys.mpirank==0){
-      velverlet(&sys);
-      ekin(&sys);
-    }
-  }*/
-  
+ /*propagate*/
+
   if (sys.mpirank==0)
 		update_velocities_positions(&sys);
 
