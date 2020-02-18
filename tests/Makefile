@@ -5,7 +5,8 @@ force:
 	$(MAKE) -C force
 
 integration:
-	$(MAKE) -C integration
+	#$(MAKE) -C integration
+	$(MAKE) -C integration run
 
 kinetic:
 	$(MAKE) -C kinetic
