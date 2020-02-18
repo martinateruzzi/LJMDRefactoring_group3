@@ -1,13 +1,13 @@
 #include <stdio.h>
 #include <stdlib.h>
-
+#include <omp.h>
 #include "prototypes.h"
 
 
 /* main */
 int main(int argc, char **argv) 
 {
-    int nprint, i;
+    int nprint, i, nthreads;
     char restfile[BLEN], trajfile[BLEN], ergfile[BLEN], line[BLEN], frcfile[BLEN];
     FILE *fp, *frc;
     mdsys_t sys;
@@ -35,6 +35,9 @@ int main(int argc, char **argv)
     sys.dt=atof(line);
     if(get_a_line(stdin,line)) return 1;
     nprint=atoi(line);
+#pragma omp parallel   
+    nthreads = omp_get_num_threads();
+
 
     /* allocate memory */
     sys.rx=(double *)malloc(sys.natoms*sizeof(double));
@@ -43,9 +46,9 @@ int main(int argc, char **argv)
     sys.vx=(double *)malloc(sys.natoms*sizeof(double));
     sys.vy=(double *)malloc(sys.natoms*sizeof(double));
     sys.vz=(double *)malloc(sys.natoms*sizeof(double));
-    sys.fx=(double *)malloc(sys.natoms*sizeof(double));
-    sys.fy=(double *)malloc(sys.natoms*sizeof(double));
-    sys.fz=(double *)malloc(sys.natoms*sizeof(double));
+    sys.fx=(double *)malloc(nthreads * sys.natoms*sizeof(double));
+    sys.fy=(double *)malloc(nthreads * sys.natoms*sizeof(double));
+    sys.fz=(double *)malloc(nthreads * sys.natoms*sizeof(double));
 
     /* read restart */
     fp=fopen(restfile,"r");

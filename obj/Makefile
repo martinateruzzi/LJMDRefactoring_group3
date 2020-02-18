@@ -19,7 +19,7 @@ clean:
 	$(CC) -o $@ $(CFLAGS) $^ $(LDLIBS)
 
 ../obj/libljmd.so: utilities.o force.o velverlet.o output.o
-	$(CC) -shared -o $@ $^ $(LDLIBS)
+	$(CC) -shared -o $@ $(CFLAGS) $^ $(LDLIBS)
 
 # compilation pattern rule for objects
 %.o: %.c

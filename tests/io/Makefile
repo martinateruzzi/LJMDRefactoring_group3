@@ -9,7 +9,7 @@ IDIR := ../../inc
 ODIR := ../../obj
 
 CC := gcc
-CFLAGS := -Wall -g -O3 -ffast-math -fomit-frame-pointer  -I $(IDIR)
+CFLAGS := -Wall -g -O3 -ffast-math -fomit-frame-pointer  -DOPENMP -fopenmp  -I $(IDIR)
 LDLIBS := -lm -lljmd
 LDFLAGS :=  -L $(ODIR)
 

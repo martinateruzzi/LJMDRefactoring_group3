@@ -12,7 +12,7 @@
 #include <ctype.h>
 #include <stdlib.h>
 #include <math.h>
-
+#include <omp.h> 
 #include "datastructures.h"
 
 /* generic file- or pathname buffer length */
