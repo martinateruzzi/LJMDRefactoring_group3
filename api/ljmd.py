@@ -1,6 +1,6 @@
-from ctypes import *
-import numpy as np
+from __future__ import print_function
 import sys as _sys
+from ctypes import *
 
 """ ljmd.py: Wrapper for ljmd.c code
 This is a wrapper around Leonard-Jones Molecular Dynamics codes 
@@ -17,8 +17,11 @@ __email__       =   "saeidaliei2019@gmail.com"
 __date__        =   "Dev"
 
 class Mdsys(Structure):
-    """
-    Wrapper around _mdsys structure.
+    """Wrapper around _mdsys structure.
+
+    __fields__ represents the variables present
+    in the _mdsys structure on the C side in the order
+    they appear.
     
     Attributes
     ----------
@@ -85,19 +88,37 @@ class Mdsys(Structure):
         ("fz", POINTER(c_double)),
         ]
 
-class LJMD:
-    """
-    LJMD object to define a system of particles.
+class Ljmd:
+    """LJMD object to define a system of particles.
+
+    Ljmd class defines mehodes to interact with the 
+    Molecular Dynamic system.
+
     """
     def __init__(self, initfile):
+        """Initialize Ljmd object.
+        
+        Arguments
+        ---------
+        initfile: str
+            initialization file, it will look it under examples dir
+
+        """
         self.initfile = initfile
         self.loadinit()
+        try:
+            self._dll = CDLL("../obj/libljmd.so")
+            print("Shared object loaded.")
+        except Exception as err:
+            print("Could not load shared object: {}".foramt(srt(err)))
+            _sys.exit(1)
         self.sysinit()
 
     def loadinit(self):
+        """Load initialization file."""
         try:
             with open("examples/"+self.initfile, 'r') as file:
-                self.args = [line.split("#","1")[0].rstrip() for line in file]
+                self.args = [line.split("#",1)[0].rstrip() for line in file]
         except Exception as err:
             print("Error reading init file: {}".format(str(err)))
             _sys.exit(1)
@@ -113,9 +134,35 @@ class LJMD:
         self.nsteps = int(self.args[9])
         self.dt = float(self.args[10])
         self.nprint = int(self.args[11])
-        print("Loading init file.\n")
+        print("\nLoaded init file.")
+
+    def loadrest(self):
+        """Loads restart file and initializes positions and velocities."""
+        try:
+            with open("examples/"+self.restfile, "r") as file:
+                line  = file.readlines()
+                assert len(line) == 2 * self.natoms, \
+                "Restart file is not correct.\n"
+                for i in range(self.natoms):
+                    self.sys.rx[i] = float(line[i].rstrip().split()[0])
+                    self.sys.ry[i] = float(line[i].rstrip().split()[1])
+                    self.sys.rz[i] = float(line[i].rstrip().split()[2])
+                for i in range(self.natoms):
+                    self.sys.vx[i] = float(line[i+self.natoms].rstrip().split()[0])
+                    self.sys.vy[i] = float(line[i+self.natoms].rstrip().split()[1])
+                    self.sys.vz[i] = float(line[i+self.natoms].rstrip().split()[2])
+        except Exception as err:
+            print("Could not read restart file: {}".format(str(err)))
+            _sys.exit(1)
 
     def sysinit(self):
+        """Initialize system as Mdsys instance.
+
+        Defines position, velocity and force as ctype double,
+        then loads the restart file and initializes force and
+        kinetic energy of the system.
+
+        """
         self.sys = Mdsys(
             natoms = self.natoms,
             nsteps = self.nsteps,
@@ -126,71 +173,74 @@ class LJMD:
             box = self.box,
             rcut = self.rcut,            
             )
-        try:
-            _initarr = np.loadtxt("examples/"+self.restfile, dtype=c_double)
-        except Exception as err:
-            print("Error reading restart file: {}".format(str(err)))
-            _sys.exit(1)
-        _dblp = POINTER(c_double)
-        _rx = _initarr[:,0][:self.natoms]
-        _ry = _initarr[:,1][:self.natoms]
-        _rz = _initarr[:,2][:self.natoms]
-        _vx = _initarr[:,0][self.natoms:]
-        _vy = _initarr[:,1][self.natoms:]
-        _vz = _initarr[:,2][self.natoms:]
-        _fx = np.zeros(self.natoms, dtype=c_double)
-        _fy = np.zeros(self.natoms, dtype=c_double)
-        _fz = np.zeros(self.natoms, dtype=c_double)
-        self.sys.rx = _rx.ctypes.data_as(_dblp)
-        self.sys.ry = _ry.ctypes.data_as(_dblp)
-        self.sys.rz = _rz.ctypes.data_as(_dblp)
-        self.sys.vx = _vx.ctypes.data_as(_dblp)
-        self.sys.vy = _vy.ctypes.data_as(_dblp)
-        self.sys.vz = _vz.ctypes.data_as(_dblp)
-        self.sys.fx = _fx.ctypes.data_as(_dblp)
-        self.sys.fy = _fy.ctypes.data_as(_dblp)
-        self.sys.fz = _fz.ctypes.data_as(_dblp)
-        self.sys.nfi = 0
+        self.sys.rx = (c_double * self.natoms)()
+        self.sys.ry = (c_double * self.natoms)()
+        self.sys.rz = (c_double * self.natoms)()
+        self.sys.vx = (c_double * self.natoms)()
+        self.sys.vy = (c_double * self.natoms)()
+        self.sys.vz = (c_double * self.natoms)()
+        self.sys.fx = (c_double * self.natoms)()
+        self.sys.fy = (c_double * self.natoms)()
+        self.sys.fz = (c_double * self.natoms)()
+        
+        self.loadrest()
         self.force()
         self.ekin()
-        print("System initialized.\n")
-
-    def output(self):
-        _ergstr = "{:8} {:20.8} {:20.8} {:20.8} {:20.8}\n".format(
-            self.sys.nfi, self.sys.temp, self.sys.ekin, self.sys.epot, 
-            self.sys.ekin+self.sys.epot)
-        print(_ergstr)
-        try:
-            with open("refrences/"+self.ergfile, "a") as file:
-                file.write(_ergstr)
-        except Exception as err:
-            print("Error writing to file: {}".format(str(err)))
-
-        try:
-            with open("refrences/"+self.trajfile, "a") as file:
-                file.write("nfil = {:8} \t etot = {:.8}\n".format(
-                    self.sys.nfi, self.sys.ekin+self.sys.epot))
-                for i in range(self.natoms):
-                    _trajstr = "Ar  {:20.8} {:20.8} {:20.8}\n".format(
-                        self.sys.rx[i], self.sys.ry[i], self.sys.rz[i])
-                    file.write(_trajstr)
-        except Exception as err:
-            print("Error writing to file: {}".format(str(err)))
-
-    def loadengine(self):
-        self._dll = CDLL("../libljmd.so")
-        self._dll.force.argtypes = [POINTER(self.sys)]
-        self._dll.force.restype = None
-        self._dll.ekin.argtypes = [POINTER(self.sys)]
-        self._dll.ekin.restype = None
-        self._dll.velverlet.argtypes = [POINTER(self.sys)]
-        self._dll.velverlet.restype = None
+        self.sys.nfi = 0
+        print("System initialized.")
 
     def force(self):
         self._dll.force(byref(self.sys))
 
     def ekin(self):
-        self._dll.force(byref(self.sys))
+        self._dll.ekin(byref(self.sys))
 
     def velverlet(self):
         self._dll.velverlet(byref(self.sys))
+    
+    def runsimulation(self):
+        """Run simulation of the system.
+
+        This method in turn will call velverlet and ekin function
+        on the C side. it will evolve the system for nstep times.
+
+        """
+        print("\nStarting simulation with {} atoms for {} steps.".format(
+            self.natoms, self.nsteps))
+        print("NFI \t\t\t TEMP \t\t EKIN \t\t  EPOT \t\t\t ETOT")
+        self.output()
+        self.sys.nfi = 1
+        while self.sys.nfi <= self.sys.nsteps:
+            if(self.sys.nfi % self.nprint == 0):
+                self.output()
+            self.velverlet()
+            self.ekin()
+            self.sys.nfi += 1
+        print("Simulation done!")
+
+    def output(self):
+        """Write energy and postitons results to given files."""
+        _ergstr = "%8d %20.8f %20.8f %20.8f %20.8f" %(
+            self.sys.nfi, self.sys.temp, self.sys.ekin, self.sys.epot, 
+            self.sys.ekin+self.sys.epot)
+        print(_ergstr)
+        try:
+            with open("refrences/"+self.ergfile, "a") as file:
+                file.write(_ergstr+"\n")
+        except Exception as err:
+            print("Error writing to file: {}".format(str(err)))
+
+        try:
+            with open("refrences/"+self.trajfile, "a") as file:
+                file.write("\nnfi = {} \t etot = {:.8}\n".format(
+                    self.sys.nfi, self.sys.ekin+self.sys.epot))
+                for i in range(self.natoms):
+                    _trajstr = "Ar  %20.8f %20.8f %20.8f\n" %(
+                        self.sys.rx[i], self.sys.ry[i], self.sys.rz[i])
+                    file.write(_trajstr)
+        except Exception as err:
+            print("Error writing to file: {}".format(str(err)))
+
+if __name__ == '__main__':
+        md = Ljmd("argon_108.inp")
+        md.runsimulation()    
