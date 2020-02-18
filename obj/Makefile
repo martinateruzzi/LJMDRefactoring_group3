@@ -1,8 +1,9 @@
 # -*- Makefile -*-
 SHELL=/bin/sh
-CC=gcc
+CC=mpicc
 CFLAGS=-Wall -g -O3 -ffast-math -fomit-frame-pointer -fexpensive-optimizations -msse3 -I ../inc -fpic
 LDLIBS=-lm
+OFLAGS=-D_MPI
 
 # list of source files
 SRC=prototypes.h datastructures.h velverlet.c force.c utilities.c output.c ljmd.c
