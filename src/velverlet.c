@@ -21,9 +21,6 @@ const double mvsq2e=2390.05736153349; /* m*v^2 in kcal/mol */
 void update_velocities_positions(mdsys_t *sys){
 
 	int i;
-#if defined(_OPENMP)
-#pragma omp parallel private(i)
-#endif
     /* first part: propagate velocities by half and positions by full step */
     	for ( i = 0; i < sys->natoms; ++i ) {
         
@@ -41,9 +38,6 @@ void update_velocities_positions(mdsys_t *sys){
 void update_velocities(mdsys_t *sys)
 {
     int i;
-#if defined(_OPENMP)
-#pragma omp parallel private(i)
-#endif
     /* second part: propagate velocities by another half step */
     for (i=0; i<sys->natoms; ++i) {
         sys->vx[i] += 0.5*sys->dt / mvsq2e * sys->fx[i] / sys->mass;
@@ -71,9 +65,6 @@ void velverlet(mdsys_t *sys)
 void ekin(mdsys_t *sys)
 {   
     int i;
-#if defined(_OPENMP)
-#pragma omp parallel private(i)
-#endif
     sys->ekin=0.0;
     for (i=0; i<sys->natoms; ++i) {
         sys->ekin += 0.5*mvsq2e*sys->mass*(sys->vx[i]*sys->vx[i] + sys->vy[i]*sys->vy[i] + sys->vz[i]*sys->vz[i]);
