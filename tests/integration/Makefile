@@ -27,7 +27,7 @@ clean:
 	rm -f *.x *.xyz
 
 run: test_integration.x
-	export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:../../obj
+	export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:../../obj
 	./test_integration.x < argon_003.inp
 	cmp argon_003.dat argon_003_serial.reference || exit 1
 	rm -f argon_003.dat	
