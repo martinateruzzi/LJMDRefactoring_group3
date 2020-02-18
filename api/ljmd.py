@@ -14,7 +14,8 @@ __licence__     =   "GPL"
 __version__     =   "1.0.0"
 __maintainer__  =   "Saeid Aliei"
 __email__       =   "saeidaliei2019@gmail.com"
-__date__        =   "Dev"
+__date__        =   "Feb 2020"
+__state__       =   "Dev"
 
 class Mdsys(Structure):
     """Wrapper around _mdsys structure.
@@ -117,7 +118,7 @@ class Ljmd:
     def loadinit(self):
         """Load initialization file."""
         try:
-            with open("examples/"+self.initfile, 'r') as file:
+            with open("inits/"+self.initfile, 'r') as file:
                 self.args = [line.split("#",1)[0].rstrip() for line in file]
         except Exception as err:
             print("Error reading init file: {}".format(str(err)))
@@ -139,7 +140,7 @@ class Ljmd:
     def loadrest(self):
         """Loads restart file and initializes positions and velocities."""
         try:
-            with open("examples/"+self.restfile, "r") as file:
+            with open("inits/"+self.restfile, "r") as file:
                 line  = file.readlines()
                 assert len(line) == 2 * self.natoms, \
                 "Restart file is not correct.\n"
@@ -225,13 +226,13 @@ class Ljmd:
             self.sys.ekin+self.sys.epot)
         print(_ergstr)
         try:
-            with open("refrences/"+self.ergfile, "a") as file:
+            with open("results/"+self.ergfile, "a") as file:
                 file.write(_ergstr+"\n")
         except Exception as err:
             print("Error writing to file: {}".format(str(err)))
 
         try:
-            with open("refrences/"+self.trajfile, "a") as file:
+            with open("results/"+self.trajfile, "a") as file:
                 file.write("\nnfi = {} \t etot = {:.8}\n".format(
                     self.sys.nfi, self.sys.ekin+self.sys.epot))
                 for i in range(self.natoms):
@@ -242,5 +243,5 @@ class Ljmd:
             print("Error writing to file: {}".format(str(err)))
 
 if __name__ == '__main__':
-        md = Ljmd("argon_108.inp")
+        md = Ljmd("argon_003.inp")
         md.runsimulation()    
