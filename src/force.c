@@ -43,9 +43,10 @@ void force(mdsys_t *sys)
   MPI_Bcast(sys->ry, sys->natoms, MPI_DOUBLE, 0, sys->mpicomm);
   MPI_Bcast(sys->rz, sys->natoms, MPI_DOUBLE, 0, sys->mpicomm);
 
-  for(i=0; i < (sys->natoms)-1 ; i+=sys->nsize) {
-    ii=i+sys->mpirank;
-    if (ii >= (sys->natoms - 1)) break;
+  //for(i=0; i < (sys->natoms)-1 ; i+=sys->nsize) {
+   // ii=i+sys->mpirank;
+   // if (ii >= (sys->natoms - 1)) break;
+  for(i=sys->mpirank; i < sys->natoms; i+=sys->nprocs) {  
     for(j=i+1; j < (sys->natoms); ++j) {
 
       /* get distance between particle i and j */
@@ -57,7 +58,9 @@ void force(mdsys_t *sys)
       /* compute force and energy if within cutoff */
       if (rsq < rcsq) {
 
-	double r6,rinv; rinv=1.0/rsq; r6=rinv*rinv*rinv;
+	double r6,rinv;
+	rinv=1.0/rsq;
+	r6=rinv*rinv*rinv;
 	ffac = (12.0*c12*r6 - 6.0*c6)*r6*rinv;
 	epot += r6*(c12*r6 - c6); /*change epot is fo every prcessor, then we will do the reduce*/
 

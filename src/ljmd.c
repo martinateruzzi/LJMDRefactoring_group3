@@ -61,16 +61,18 @@ int main(int argc, char **argv)
     nprint=atoi(line);
   }
 
-  sys.nsize=sys.natoms/sys.nprocs;
+ 
    
   MPI_Bcast(&sys.dt,1,MPI_DOUBLE,0,sys.mpicomm);
-  MPI_Bcast(&sys.nsteps,1,MPI_DOUBLE,0,sys.mpicomm);
+  MPI_Bcast(&sys.nsteps,1,MPI_INT,0,sys.mpicomm);
   MPI_Bcast(&sys.box,1,MPI_DOUBLE,0,sys.mpicomm);
   MPI_Bcast(&sys.rcut,1,MPI_DOUBLE,0,sys.mpicomm);
-  MPI_Bcast(&sys.natoms,1,MPI_DOUBLE,0,sys.mpicomm); 
+  MPI_Bcast(&sys.natoms,1,MPI_INT,0,sys.mpicomm); 
   MPI_Bcast(&sys.sigma,1,MPI_DOUBLE,0,sys.mpicomm);
   MPI_Bcast(&sys.epsilon,1,MPI_DOUBLE,0,sys.mpicomm);
   MPI_Bcast(&sys.mass,1,MPI_DOUBLE,0,sys.mpicomm);
+
+   sys.nsize=sys.natoms/sys.nprocs;
   
   /* allocate memory */
 
@@ -80,6 +82,10 @@ int main(int argc, char **argv)
   sys.vx=(double *)malloc(sys.natoms*sizeof(double));
   sys.vy=(double *)malloc(sys.natoms*sizeof(double));
   sys.vz=(double *)malloc(sys.natoms*sizeof(double));
+  
+  for (i=0;i<sys.natoms;++i){
+  printf("%d vx %f vy %f vz %f",i,sys.vx[i],sys.vy[i],sys.vz[i]);
+  }
   /*only rank 0*/
   if (sys.mpirank==0){
     sys.fx=(double *)malloc(sys.natoms*sizeof(double));
@@ -133,12 +139,27 @@ int main(int argc, char **argv)
     if ((sys.nfi % nprint) == 0 && sys.mpirank==0)
       output(&sys, erg, traj);
 
-    /* propagate system and recompute energies */
+
+
+    /* propagate system and recompute energies 
     if(sys.mpirank==0){
       velverlet(&sys);
       ekin(&sys);
     }
-  }
+  }*/
+  
+  if (sys.mpirank==0)
+		update_velocities_positions(&sys);
+
+	force(&sys);
+
+        if (sys.mpirank==0){
+		update_velocities(&sys);
+        	ekin(&sys);
+	}
+}
+
+
   /**************************************************/
 
   /* clean up: close files, free memory */
