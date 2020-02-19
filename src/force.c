@@ -4,108 +4,112 @@
  *
  * baseline c version.
  */
-
-#include <stdio.h>
-#include <string.h>
-#include <ctype.h>
-#include <stdlib.h>
-#include <math.h>
+#if defined (_OPENMP)
 #include <omp.h>
+#endif
 #include "prototypes.h"
 /* helper function: apply minimum image convention */
 static double pbc(double x, const double boxby2)
 {
-    while (x >  boxby2) x -= 2.0*boxby2;
-    while (x < -boxby2) x += 2.0*boxby2;
-    return x;
+  while (x >  boxby2) x -= 2.0*boxby2;
+  while (x < -boxby2) x += 2.0*boxby2;
+  return x;
 }
 
 /* compute forces */
 void force(mdsys_t *sys) 
 {
-    	double epot = 0.0;
-	double sigma6, c6, c12, rcsq;
-	
-	sigma6 = sys->sigma * sys->sigma * sys->sigma * sys->sigma * sys->sigma * sys->sigma;
-    	c6 =4.0 * sys->epsilon * sigma6;
-    	c12 =4.0 * sys->epsilon * sigma6 * sigma6;
-    	rcsq = sys->rcut * sys->rcut;
+  double c6, c12, rcsq;
+  double sigma, sigma6;
+  
 
+  /* zero energy */
+  double epot=0.0;
+  
+  sigma = sys->sigma;
+  sigma6 = sigma*sigma*sigma*sigma*sigma*sigma;
+  c6 =4.0*sys->epsilon*sigma6;
+  c12 =4.0*sys->epsilon*sigma6*sigma6;
+  rcsq = sys->rcut * sys->rcut;
+    
+  MPI_Bcast(sys->rx, sys->natoms, MPI_DOUBLE, 0, sys->mpicomm);
+  MPI_Bcast(sys->ry, sys->natoms, MPI_DOUBLE, 0, sys->mpicomm);
+  MPI_Bcast(sys->rz, sys->natoms, MPI_DOUBLE, 0, sys->mpicomm);
+  
+#if defined (_OPENMP)
 #pragma omp parallel reduction(+:epot)
-{
-	int nthreads = omp_get_num_threads();
-	
-//	printf("I arrived after nthreads\n");
+#endif
+  {
+     double rx, ry, rz;
+     double *cx, *cy, *cz;
+     double rsq, ffac;
+     double epot_priv = 0.0;
+     int i;
+#if defined (_OPENMP)
+     int tid = omp_get_thread_num();
+#else
+     int tid = 0;
+#endif
+  /*to each omp thread, assign a local force holder and initialze them to zero,
+	later we perfom a mpi reduction on them to get the total force.
+  */
+  cx = sys->cx + (tid * sys->natoms);
+  azzero(cx, sys->natoms);
+  cy = sys->cy + (tid * sys->natoms);
+  azzero(cy, sys->natoms);
+  cz = sys->cz + (tid * sys->natoms);
+  azzero(cz, sys->natoms);
+  
+  for(i=sys->mpirank; i < sys->natoms-1; i+=sys->nprocs) {
+    if(((i-sys->mpirank)/sys->nprocs)%sys->nthreads != tid)
+		continue;
+    for(int j=i+1; j < (sys->natoms); ++j) {
 
-	int tid = omp_get_thread_num();
-//	int N = nthreads * sys->natoms;
-	
-//	printf("I read openmp function %d \n", tid);
- 	double *fx, *fy, *fz;
-  //	printf(" I am befor rx,.. \n%d", tid);
+      /* get distance between particle i and j */
+      rx=pbc(sys->rx[i] - sys->rx[j], 0.5*sys->box);
+      ry=pbc(sys->ry[i] - sys->ry[j], 0.5*sys->box);
+      rz=pbc(sys->rz[i] - sys->rz[j], 0.5*sys->box);
+      rsq = rx*rx + ry*ry + rz*rz;
+      
+      /* compute force and energy if within cutoff */
+      if (rsq < rcsq) {
 
-	double ffac, rsq;
-    	double rx,ry,rz;
-    	int i,j;
-//	printf("I am after rx...\n %d", tid);
+	double r6,rinv;
+	rinv=1.0/rsq;
+	r6=rinv*rinv*rinv;
+	ffac = (12.0*c12*r6 - 6.0*c6)*r6*rinv;
+	epot += r6*(c12*r6 - c6); /*change epot is fo every prcessor, then we will do the reduce*/
 
-    /* zero energy and forces */
+	cx[i] += rx*ffac;
+	cy[i] += ry*ffac;
+	cz[i] += rz*ffac;
 
-//	printf("%d", tid);
- 	fx = sys->fx + (tid * sys->natoms); 	azzero( fx, sys->natoms );
-	fy = sys->fy + (tid * sys->natoms); 	azzero( fy, sys->natoms );
-	fz = sys->fz + (tid * sys->natoms); 	azzero( fz, sys->natoms );
-	
-
-	for(i = tid; i < (sys->natoms)-1 ; i += nthreads) {
-		for(j=i+1; j < (sys->natoms); ++j) {
-
-            	/* get distance between particle i and j */
-            		rx = pbc( sys->rx[i] - sys->rx[j], 0.5 * sys->box );
-            		ry = pbc( sys->ry[i] - sys->ry[j], 0.5 * sys->box );
-            		rz = pbc( sys->rz[i] - sys->rz[j], 0.5*sys->box);
-            		rsq = rx*rx + ry*ry + rz*rz;
-               	/* compute force and energy if within cutoff */
-            		if (rsq < rcsq) {
-				double r6, rinv; 
-				rinv = 1.0/rsq; 
-				r6 = rinv * rinv * rinv;
-				ffac = ( 12.0 * c12 * r6 - 6.0 * c6 ) * r6 * rinv;
-				epot += r6 * ( c12 * r6 - c6 );
-
-                		fx[ i ] += rx * ffac; 		//sys->fx[i] += rx*ffac;
-                		fy[ i ] += ry * ffac;		//sys->fy[i] += ry*ffac;
-                		fz[ i ] += rz * ffac;		//sys->fz[i] += rz*ffac;
-
-                		fx[ j ] -= rx * ffac;		//sys->fx[j] -= rx*ffac;
-                		fy[ j ] -= ry * ffac;		//sys->fy[j] -= ry*ffac;
-                		fz[ j ] -= rz * ffac; 		//sys->fz[j] -= rz*ffac;
-            		}
-        	}	 
-    	}
-	
-#pragma omp barrier
-
-	i = 1 + ( sys->natoms / nthreads );
-//	printf("numth: %d ", nthreads);
-//	printf("tid: %d\n", tid);
-	
+	cx[j] -= rx*ffac;
+	cy[j] -= ry*ffac;
+	cz[j] -= rz*ffac;
+      }
+    }
+  }
+	epot += epot_priv;
+#if defined (_OPENMP)
+#pragma omp barrier // sync everything
+#endif
+	i = 1 + ( sys->natoms / sys->nthreads );	
 	int fromidx = tid * i;
 	int toidx = fromidx + i;
 	if (toidx > sys->natoms) toidx = sys->natoms;
-	for (i=1; i < nthreads; ++i) {
+	for (i=1; i < sys->nthreads; ++i) {
 		int offs = i * sys->natoms;
 		for (int j=fromidx; j < toidx; ++j) {
-			sys->fx[ j ] += sys->fx[ offs+j ];
-			sys->fy[ j ] += sys->fy[ offs+j ];
-			sys->fz[ j ] += sys->fz[ offs+j ];
+			sys->cx[ j ] += sys->cx[ offs+j ];
+			sys->cy[ j ] += sys->cy[ offs+j ];
+			sys->cz[ j ] += sys->cz[ offs+j ];
 			}
 		}
-
 }
- 
  sys->epot = epot;
-// printf("\n I am epot  %f, and %f \n",epot , sys->epot);
+    MPI_Reduce(sys->cx, sys->fx, sys->natoms, MPI_DOUBLE, MPI_SUM, 0, sys->mpicomm);
+    MPI_Reduce(sys->cy, sys->fy, sys->natoms, MPI_DOUBLE, MPI_SUM, 0, sys->mpicomm);
+    MPI_Reduce(sys->cz, sys->fz, sys->natoms, MPI_DOUBLE, MPI_SUM, 0, sys->mpicomm);
+    MPI_Reduce(&epot, &sys->epot, 1, MPI_DOUBLE, MPI_SUM, 0, sys->mpicomm);
 }
-
-
