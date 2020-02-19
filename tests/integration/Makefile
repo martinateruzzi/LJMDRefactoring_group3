@@ -8,9 +8,9 @@ SDIR := ../../src
 IDIR := ../../inc
 ODIR := ../../obj
 
-CC := gcc
+CC := mpicc
 CFLAGS := -Wall -g -O3 -ffast-math -fomit-frame-pointer  -I $(IDIR) 
-LDLIBS := -lm -lljmd
+LDLIBS := -lm -lljmd -fopenmp
 LDFLAGS :=  -L $(ODIR)
 
 all: $(EXE)
