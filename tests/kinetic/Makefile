@@ -8,9 +8,11 @@ SDIR := ../../src
 IDIR := ../../inc
 ODIR := ../../obj
 
+LD_PATH := ${LD_LIBRARY_PATH}
+
 CC := gcc
 CFLAGS := -Wall -g -O3 -ffast-math -fomit-frame-pointer -DOPENMP -fopenmp  -I $(IDIR)
-LDLIBS := -lm -lljmd
+LDLIBS := -lm -lljmd -fopenmp
 LDFLAGS :=  -L $(ODIR)
 
 all: $(EXE)
@@ -22,6 +24,19 @@ all: $(EXE)
 	$(CC) $< -o $@ $(LDFLAGS) $(LDLIBS) 
 
 .PHONY: clean
-
 clean:
-	rm *.x 
+	rm *.x *.xyz
+
+run: test_force.x
+	@$(eval export LD_LIBRARY_PATH=$(LD_PATH):$(ODIR))
+	./test_kinetic.x < argon_003.inp
+	cmp argon_003.dat argon_003_serial.reference || exit 1
+	rm -f argon_003.dat     
+
+test: 
+	$(eval export LD_LIBRARY_PATH=$(LD_PATH):$(ODIR))
+	@echo ${LD_LIBRARY_PATH}
+	@echo "LD_PATH" $(LD_PATH)
+
+
+

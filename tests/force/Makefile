@@ -13,7 +13,7 @@ LD_PATH := ${LD_LIBRARY_PATH}
 
 CC := gcc
 CFLAGS := -Wall -g -O3 -ffast-math -fomit-frame-pointer -DOPENMP -fopenmp  -I $(IDIR) 
-LDLIBS := -lm -lljmd
+LDLIBS := -lm -lljmd -fopenmp
 LDFLAGS :=  -L $(ODIR)
 
 all: $(EXE)
