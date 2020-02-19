@@ -2,7 +2,7 @@
 SHELL=/bin/sh
 CC=mpicc
 CFLAGS=-Wall -g -O3 -ffast-math -fomit-frame-pointer -fexpensive-optimizations -msse3 -I ../inc -fpic -DOPENMP -fopenmp -D_MPI
-LDLIBS=-lm
+LDLIBS=-lm -fopenmp
 
 # list of source files
 SRC=prototypes.h datastructures.h velverlet.c force.c utilities.c output.c ljmd.c

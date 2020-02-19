@@ -4,9 +4,9 @@
  *
  * baseline c version.
  */
-#if defined (_OPENMP)
+//#if defined (_OPENMP)
 #include <omp.h>
-#endif
+//#endif
 #include "prototypes.h"
 /* helper function: apply minimum image convention */
 static double pbc(double x, const double boxby2)
