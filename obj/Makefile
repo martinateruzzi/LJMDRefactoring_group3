@@ -1,7 +1,7 @@
 # -*- Makefile -*-
 SHELL=/bin/sh
-CC=gcc
-CFLAGS=-Wall -g -O3 -ffast-math -fomit-frame-pointer -fexpensive-optimizations -msse3 -I ../inc -fpic -DOPENMP -fopenmp
+CC=mpicc
+CFLAGS=-Wall -g -O3 -ffast-math -fomit-frame-pointer -fexpensive-optimizations -msse3 -I ../inc -fpic -DOPENMP -fopenmp -D_MPI
 LDLIBS=-lm
 
 # list of source files
@@ -9,13 +9,13 @@ SRC=prototypes.h datastructures.h velverlet.c force.c utilities.c output.c ljmd.
 VPATH=../src ../inc
 OBJ=$(SRC:%.c=%.o)
 
-default: ../ljmd-serial.x ../obj/libljmd.so
+default: ../ljmd.x ../obj/libljmd.so
 
 clean:
-	rm -f *.mod *.o ../ljmd-serial.x ../obj/libljmd.so
+	rm -f *.mod *.o ../ljmd.x ../obj/libljmd.so
 
 # linker rule
-../ljmd-serial.x: $(OBJ)
+../ljmd.x: $(OBJ)
 	$(CC) -o $@ $(CFLAGS) $^ $(LDLIBS)
 
 ../obj/libljmd.so: utilities.o force.o velverlet.o output.o

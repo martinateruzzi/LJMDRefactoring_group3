@@ -10,8 +10,8 @@ SDIR := ../../src
 IDIR := ../../inc
 ODIR := ../../obj
 
-CC := gcc
 CFLAGS := -Wall -g -O3 -ffast-math -fomit-frame-pointer  -DOPENMP -fopenmp  -I $(IDIR)
+CC := mpicc
 LDLIBS := -lm -lljmd -fopenmp
 LDFLAGS :=  -L $(ODIR)
 

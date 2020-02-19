@@ -7,7 +7,6 @@
 argon_003.rest    # restart
 argon_003.xyz     # trajectory
 argon_003.dat     # energies
-argon_003.frc 	  # forces
 1000              # nr MD steps
 50.0              # MD time step (in fs)
 5                 # output print frequency

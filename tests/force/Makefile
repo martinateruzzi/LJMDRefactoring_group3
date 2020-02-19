@@ -8,11 +8,12 @@ SDIR := ../../src
 IDIR := ../../inc
 ODIR := ../../obj
 
+<<<<<<< HEAD
 LD_PATH := ${LD_LIBRARY_PATH}
 
 
-CC := gcc
 CFLAGS := -Wall -g -O3 -ffast-math -fomit-frame-pointer -DOPENMP -fopenmp  -I $(IDIR) 
+CC := mpicc
 LDLIBS := -lm -lljmd -fopenmp
 LDFLAGS :=  -L $(ODIR)
 
@@ -24,10 +25,14 @@ all: $(EXE)
 %.x: %.o 
 	$(CC) $< -o $@ $(LDFLAGS) $(LDLIBS)
 
-.PHONY: clean
+.PHONY: clean run
+
+run: $(EXE)
+	export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:$(ODIR)
+	./$(EXE) < argon_003.inp
 
 clean:
-	rm -f *.x *.xyz
+	rm -f *.x *.xyz *.frc
 
 run: test_force.x
 	@$(eval export LD_LIBRARY_PATH=$(LD_PATH):$(ODIR))
@@ -39,8 +44,5 @@ test:
 	$(eval export LD_LIBRARY_PATH=$(LD_PATH):$(ODIR))
 	@echo ${LD_LIBRARY_PATH}
 	@echo "LD_PATH" $(LD_PATH)
-
-
-
 
 
