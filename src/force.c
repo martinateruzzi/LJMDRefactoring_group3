@@ -20,7 +20,7 @@ static double pbc(double x, const double boxby2)
 void force(mdsys_t *sys) 
 {
   double c6, c12, rcsq;
-  double simga, sigma6;
+  double sigma, sigma6;
   
 
   /* zero energy */
