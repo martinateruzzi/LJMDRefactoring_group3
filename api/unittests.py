@@ -6,3 +6,15 @@ class Test(unittest.TestCase):
 
 	def test_force(self):
 		
+
+	def test_ekin(self):
+		pass
+
+	def test_velverlet(self):
+		pass
+
+	def test_input(self):
+		pass
+
+	def test_ouput(self):
+		pass
