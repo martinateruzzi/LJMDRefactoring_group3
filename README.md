@@ -59,3 +59,15 @@ The next optimization we want to achieve is to avoid expensive mathematical oper
 <img src="img/noexpensivemath.png" alt="noexpensivemath.png" style="zoom:60%;" />
 
 The computation of the time with `/usr/bin/time`gives 1.28 seconds.
+
+MPI-PART
+
+We prepare the MPI part as asked.
+We implement the force.c in mpi using optimisation in it too.
+We decided that rank 0 is the one that takes the input data and send them to others. it is also the only one that can compute the fx,fyand fz.
+
+We do the benchmark but we have problem to access to clusers. So we prepare a graph using laptops.
+With 1 MPI process is 43 seconds, with 2 MPI processes is 24 seconds.
+
+<img src="img/MPI.png" alt="MPI.png" style="zoom:60%;" />
+
