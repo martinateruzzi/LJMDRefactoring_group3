@@ -35,23 +35,17 @@ void force(mdsys_t *sys)
 {
 	int nthreads = omp_get_num_threads();
 	
-//	printf("I arrived after nthreads\n");
 
 	int tid = omp_get_thread_num();
-//	int N = nthreads * sys->natoms;
 	
-//	printf("I read openmp function %d \n", tid);
  	double *fx, *fy, *fz;
-  //	printf(" I am befor rx,.. \n%d", tid);
 
 	double ffac, rsq;
     	double rx,ry,rz;
     	int i,j;
-//	printf("I am after rx...\n %d", tid);
 
     /* zero energy and forces */
 
-//	printf("%d", tid);
  	fx = sys->fx + (tid * sys->natoms); 	azzero( fx, sys->natoms );
 	fy = sys->fy + (tid * sys->natoms); 	azzero( fy, sys->natoms );
 	fz = sys->fz + (tid * sys->natoms); 	azzero( fz, sys->natoms );
