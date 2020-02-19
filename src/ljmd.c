@@ -10,17 +10,12 @@
 #include <ctype.h>
 #include <stdlib.h>
 #include <math.h>
-#include <mpi.h>
+
+#if defined (_OPENMP)
+#include <omp.h>
+#endif
 
 #include "prototypes.h"
-
-/* generic file- or pathname buffer length */
-//#define BLEN 200
-
-/* a few physical constants */
-//const double kboltz=0.0019872067;     /* boltzman constant in kcal/mol/K */
-//const double mvsq2e=2390.05736153349; /* m*v^2 in kcal/mol */
-
 
 /* main */
 int main(int argc, char **argv) 
@@ -35,6 +30,12 @@ int main(int argc, char **argv)
   MPI_Comm_rank(sys.mpicomm,&sys.mpirank);
   MPI_Comm_size(sys.mpicomm,&sys.nprocs);
  
+#if defined (_OPENMP)
+#pragma omp parallel
+  sys.nthreads = omp_get_num_threads();
+#else
+  sys.nthreads = 1;
+#endif
 
   /* read input file */
   if(sys.mpirank==0){
@@ -72,43 +73,41 @@ int main(int argc, char **argv)
   MPI_Bcast(&sys.epsilon,1,MPI_DOUBLE,0,sys.mpicomm);
   MPI_Bcast(&sys.mass,1,MPI_DOUBLE,0,sys.mpicomm);
 
-   sys.nsize=sys.natoms/sys.nprocs;
   
   /* allocate memory */
-
   sys.rx=(double *)malloc(sys.natoms*sizeof(double));
   sys.ry=(double *)malloc(sys.natoms*sizeof(double));
   sys.rz=(double *)malloc(sys.natoms*sizeof(double));
   sys.vx=(double *)malloc(sys.natoms*sizeof(double));
   sys.vy=(double *)malloc(sys.natoms*sizeof(double));
   sys.vz=(double *)malloc(sys.natoms*sizeof(double));
-  
-  /*only rank 0*/
+ 
+ /*forces local to each process, first natom elem of
+   each arr will be reduced*/ 
+  sys.cx=(double *)malloc(sys.nthreads*sys.natoms*sizeof(double));
+  sys.cy=(double *)malloc(sys.nthreads*sys.natoms*sizeof(double));
+  sys.cz=(double *)malloc(sys.nthreads*sys.natoms*sizeof(double));
+  /*only rank 0 has the whole forces*/
   if (sys.mpirank==0){
     sys.fx=(double *)malloc(sys.natoms*sizeof(double));
     sys.fy=(double *)malloc(sys.natoms*sizeof(double));
     sys.fz=(double *)malloc(sys.natoms*sizeof(double));
   }
-  /*buffers*/
-  sys.cx=(double *)malloc(sys.natoms*sizeof(double));
-  sys.cy=(double *)malloc(sys.natoms*sizeof(double));
-  sys.cz=(double *)malloc(sys.natoms*sizeof(double));
     
-
   /* read restart */
   if (sys.mpirank==0){
     fp=fopen(restfile,"r");
     if(fp) {
-      for (i=0; i<sys.natoms; ++i) {
-	fscanf(fp,"%lf%lf%lf",sys.rx+i, sys.ry+i, sys.rz+i);
-      }
-      for (i=0; i<sys.natoms; ++i) {
-	fscanf(fp,"%lf%lf%lf",sys.vx+i, sys.vy+i, sys.vz+i);
-      }
-      fclose(fp);
-      azzero(sys.fx, sys.natoms);
-      azzero(sys.fy, sys.natoms);
-      azzero(sys.fz, sys.natoms);
+        for (i=0; i<sys.natoms; ++i) {
+            fscanf(fp,"%lf%lf%lf",sys.rx+i, sys.ry+i, sys.rz+i);
+        }
+        for (i=0; i<sys.natoms; ++i) {
+            fscanf(fp,"%lf%lf%lf",sys.vx+i, sys.vy+i, sys.vz+i);
+        }
+        fclose(fp);
+        azzero(sys.fx, sys.natoms);
+        azzero(sys.fy, sys.natoms);
+        azzero(sys.fz, sys.natoms);
     } else {
       perror("cannot read restart file");
       return 3;
@@ -131,23 +130,18 @@ int main(int argc, char **argv)
   /**************************************************/
   /* main MD loop */
   for(sys.nfi=1; sys.nfi <= sys.nsteps; ++sys.nfi) {
-
     /* write output, if requested */
     if ((sys.nfi % nprint) == 0 && sys.mpirank==0)
-      output(&sys, erg, traj);
+	output(&sys, erg, traj);
 
-
-
- /*propagate*/
-
-  if (sys.mpirank==0)
-		update_velocities_positions(&sys);
+    if (sys.mpirank==0)
+	    update_velocities_positions(&sys);
 
 	force(&sys);
 
-        if (sys.mpirank==0){
-		update_velocities(&sys);
-        	ekin(&sys);
+    if (sys.mpirank==0){
+        update_velocities(&sys);
+		ekin(&sys);
 	}
 }
 
@@ -157,8 +151,10 @@ int main(int argc, char **argv)
   /* clean up: close files, free memory */
   if(sys.mpirank==0){
     printf("Simulation Done.\n");
+    
     fclose(erg);
     fclose(traj);
+    
     free(sys.fx);
     free(sys.fy);
     free(sys.fz);
@@ -170,7 +166,10 @@ int main(int argc, char **argv)
   free(sys.vx);
   free(sys.vy);
   free(sys.vz);
-    
+  free(sys.cx);
+  free(sys.cy);
+  free(sys.cz);
+
   MPI_Finalize();
   return 0;
 }

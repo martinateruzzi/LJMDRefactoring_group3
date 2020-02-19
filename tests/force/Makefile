@@ -8,9 +8,9 @@ SDIR := ../../src
 IDIR := ../../inc
 ODIR := ../../obj
 
-CC := gcc
-CFLAGS := -Wall -g -O3 -ffast-math -fomit-frame-pointer  -I $(IDIR)
-LDLIBS := -lm -lljmd
+CC := mpicc
+CFLAGS := -Wall -g -O3 -ffast-math -fomit-frame-pointer -fopenmp -I $(IDIR)
+LDLIBS := -lm -lljmd -fopenmp
 LDFLAGS :=  -L $(ODIR)
 
 all: $(EXE)
@@ -21,7 +21,11 @@ all: $(EXE)
 %.x: %.o 
 	$(CC) $< -o $@ $(LDFLAGS) $(LDLIBS) 
 
-.PHONY: clean
+.PHONY: clean run
+
+run: $(EXE)
+	export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:$(ODIR)
+	./$(EXE) < argon_003.inp
 
 clean:
-	rm *.x 
+	rm *.x *.frc 
