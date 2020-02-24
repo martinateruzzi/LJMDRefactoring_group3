@@ -9,4 +9,4 @@ argon_003.xyz     # trajectory
 argon_003.dat     # energies
 1000              # nr MD steps
 50.0              # MD time step (in fs)
-5                 # output print frequency
+20                 # output print frequency
