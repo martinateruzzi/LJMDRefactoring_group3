@@ -140,28 +140,27 @@ class Ljmd:
             except Exception as err:
                 print("Error reading init file: {}".format(str(err)))
                 _sys.exit(1)
-            self.natoms = int(self.args[0])
-            self.mass = float(self.args[1])
-            self.epsilon = float(self.args[2])
-            self.sigma = float(self.args[3])
-            self.rcut = float(self.args[4])
-            self.box = float(self.args[5])
+            self.sys.natoms = int(self.args[0])
+            self.sys.mass = float(self.args[1])
+            self.sys.epsilon = float(self.args[2])
+            self.sys.sigma = float(self.args[3])
+            self.sys.rcut = float(self.args[4])
+            self.sys.box = float(self.args[5])
             self.restfile = str(self.args[6])
             self.trajfile = str(self.args[7])
             self.ergfile = str(self.args[8])
-            self.nsteps = int(self.args[9])
-            self.dt = float(self.args[10])
+            self.sys.nsteps = int(self.args[9])
+            self.sys.dt = float(self.args[10])
             self.nprint = int(self.args[11])
             print("\nLoaded init file.")
-        self.natoms = self.comm.bcast(self.natoms, root=0)
-        self.mass = self.comm.bcast(self.mass, root=0)
-        self.epsilon = self.comm.bcast(self.epsilon, root=0)
-        self.sigma = self.comm.bcast(self.sigma, root=0)
-        self.rcut = self.comm.bcast(self.rcut, root=0)
-        self.box = self.comm.bcast(self.box, root=0)
-        self.nsteps = self.comm.bcast(self.nsteps, root=0)
-        self.dt = self.comm.bcast(self.dt, root=0)
-
+        self.sys.natoms = self.comm.bcast(self.sys.natoms, root=0)
+        self.sys.mass = self.comm.bcast(self.sys.mass, root=0)
+        self.sys.epsilon = self.comm.bcast(self.sys.epsilon, root=0)
+        self.sys.sigma = self.comm.bcast(self.sys.sigma, root=0)
+        self.sys.rcut = self.comm.bcast(self.sys.rcut, root=0)
+        self.sys.box = self.comm.bcast(self.sys.box, root=0)
+        self.sys.nsteps = self.comm.bcast(self.sys.nsteps, root=0)
+        self.sys.dt = self.comm.bcast(self.sys.dt, root=0)
     def initompi(self):
         """Handle OpenMP and MPI initialization"""
         self.comm = MPI.COMM_WORLD
@@ -187,26 +186,32 @@ class Ljmd:
         kinetic energy of the system.
 
         """
-        self.sys.rx = (c_double * self.natoms)()
-        self.sys.ry = (c_double * self.natoms)()
-        self.sys.rz = (c_double * self.natoms)()
-        self.sys.vx = (c_double * self.natoms)()
-        self.sys.vy = (c_double * self.natoms)()
-        self.sys.vz = (c_double * self.natoms)()
-        self.sys.cx = (c_double * self.natoms * self.sys.nthreads)()
-        self.sys.cy = (c_double * self.natoms * self.sys.nthreads)()
-        self.sys.cz = (c_double * self.natoms * self.sys.nthreads)()
+        self.sys.rx = (c_double * self.sys.natoms)()
+        self.sys.ry = (c_double * self.sys.natoms)()
+        self.sys.rz = (c_double * self.sys.natoms)()
+        self.sys.vx = (c_double * self.sys.natoms)()
+        self.sys.vy = (c_double * self.sys.natoms)()
+        self.sys.vz = (c_double * self.sys.natoms)()
+        length = self.sys.natoms * self.sys.nthreads
+        self.sys.cx = (c_double * length)()
+        self.sys.cy = (c_double * length)()
+        self.sys.cz = (c_double * length)()
         if (self.sys.mpirank == 0):
+            self.sys.fx = (c_double * self.sys.natoms)()
+            self.sys.fy = (c_double * self.sys.natoms)()
+            self.sys.fz = (c_double * self.sys.natoms)()
+        if(self.sys.mpirank == 0):
             self.loadrest()
-            self.sys.fx = (c_double * self.natoms)()
-            self.sys.fy = (c_double * self.natoms)()
-            self.sys.fz = (c_double * self.natoms)()
         self.comm.barrier()
         self.sys.nfi = 0
         self.force()
-        # if(self.sys.mpirank == 0):
-        #     self.ekin()
         print("System initialized.")
+        if (self.sys.mpirank == 0):
+            self.ekin()
+            print("\nStarting simulation with {} atoms for {} steps.".format(
+                self.sys.natoms, self.sys.nsteps))
+            print("NFI \t\t\t TEMP \t\t EKIN \t\t  EPOT \t\t\t ETOT")
+            self.output()
 
     def force(self):
         self._dll.force(byref(self.sys))
@@ -218,7 +223,7 @@ class Ljmd:
         self._dll.velverlet(byref(self.sys))
 
     def update_velocities_positions(self):
-        self.__dll.update_velocities_positions(byref(self.sys))
+        self._dll.update_velocities_positions(byref(self.sys))
 
     def update_velocities(self):
         self._dll.update_velocities(byref(self.sys))
@@ -230,16 +235,11 @@ class Ljmd:
         on the C side. it will evolve the system for nstep times.
 
         """
-        if (self.sys.mpirank == 0):
-            self.ekin()
-            print("\nStarting simulation with {} atoms for {} steps.".format(
-                self.natoms, self.nsteps))
-            print("NFI \t\t\t TEMP \t\t EKIN \t\t  EPOT \t\t\t ETOT")
-            self.output()
         self.sys.nfi = 1
         while self.sys.nfi <= self.sys.nsteps:
-            if(self.sys.nfi % self.nprint == 0) and (self.sys.mpirank == 0):
-                self.output()
+            if(self.sys.mpirank == 0):
+                if(self.sys.nfi % self.nprint == 0):
+                    self.output()
             if(self.sys.mpirank == 0):
                 self.update_velocities_positions()
             self.force()
@@ -247,24 +247,24 @@ class Ljmd:
                 self.update_velocities()
                 self.ekin()
             self.sys.nfi += 1
-            if(self.sys.mpirank == 0):
-                print("Simulation done!")
+        if(self.sys.mpirank == 0):
+            print("Simulation done!")
 
     def loadrest(self):
         """Loads restart file and initializes positions and velocities."""
         try:
             with open("inits/"+self.restfile, "r") as file:
                 line  = file.readlines()
-                assert len(line) == 2 * self.natoms, \
+                assert len(line) == 2 * self.sys.natoms, \
                 "Restart file is not correct.\n"
-                for i in range(self.natoms):
+                for i in range(self.sys.natoms):
                     self.sys.rx[i] = float(line[i].rstrip().split()[0])
                     self.sys.ry[i] = float(line[i].rstrip().split()[1])
                     self.sys.rz[i] = float(line[i].rstrip().split()[2])
-                for i in range(self.natoms):
-                    self.sys.vx[i] = float(line[i+self.natoms].rstrip().split()[0])
-                    self.sys.vy[i] = float(line[i+self.natoms].rstrip().split()[1])
-                    self.sys.vz[i] = float(line[i+self.natoms].rstrip().split()[2])
+                for i in range(self.sys.natoms):
+                    self.sys.vx[i] = float(line[i+self.sys.natoms].rstrip().split()[0])
+                    self.sys.vy[i] = float(line[i+self.sys.natoms].rstrip().split()[1])
+                    self.sys.vz[i] = float(line[i+self.sys.natoms].rstrip().split()[2])
         except Exception as err:
             print("Could not read restart file: {}".format(str(err)))
             _sys.exit(1)
@@ -276,16 +276,16 @@ class Ljmd:
             self.sys.ekin+self.sys.epot)
         print(_ergstr)
         try:
-            with open("results/"+self.ergfile, "a") as file:
+            with open("results/"+self.ergfile, "a+") as file:
                 file.write(_ergstr+"\n")
         except Exception as err:
             print("Error writing to file: {}".format(str(err)))
 
         try:
-            with open("results/"+self.trajfile, "a") as file:
+            with open("results/"+self.trajfile, "a+") as file:
                 file.write("\nnfi = {} \t etot = {:.8}\n".format(
                     self.sys.nfi, self.sys.ekin+self.sys.epot))
-                for i in range(self.natoms):
+                for i in range(self.sys.natoms):
                     _trajstr = "Ar  %20.8f %20.8f %20.8f\n" %(
                         self.sys.rx[i], self.sys.ry[i], self.sys.rz[i])
                     file.write(_trajstr)
@@ -294,5 +294,5 @@ class Ljmd:
 
 
 if __name__ == '__main__':
-        md = Ljmd("argon_003.inp")
-        md.runompisim()    
+    md = Ljmd("argon_003.inp")
+    md.runompisim()    
