@@ -111,7 +111,7 @@ class Ljmd:
             self._dll = CDLL("../obj/libljmd.so")
             print("Shared object loaded.")
         except Exception as err:
-            print("Could not load shared object: {}".format(srt(err)))
+            print("Could not load shared object: {}".format(str(err)))
             _sys.exit(1)
         self.sysinit()
 

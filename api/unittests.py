@@ -129,5 +129,3 @@ class Test(unittest.TestCase):
         #   	print(" Ekin test Done.\n")
         #except Exception as err:
         #	print("Error writing to file: {}".format(str(err)))
-        
-		

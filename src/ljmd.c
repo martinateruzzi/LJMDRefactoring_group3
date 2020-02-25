@@ -10,12 +10,23 @@
 #include <ctype.h>
 #include <stdlib.h>
 #include <math.h>
+#include <sys/time.h>
+#include <time.h>
 
 #if defined (_OPENMP)
 #include <omp.h>
 #endif
 
 #include "prototypes.h"
+
+double seconds(){
+
+    struct timeval tmp;
+    double sec;
+    gettimeofday( &tmp, (struct timezone *)0 );
+    sec = tmp.tv_sec + ((double)tmp.tv_usec)/1000000.0;
+    return sec;
+}
 
 /* main */
 int main(int argc, char **argv) 
@@ -129,11 +140,15 @@ int main(int argc, char **argv)
   }
   /**************************************************/
   /* main MD loop */
+  double tmptime  = 0.0;
+  double exectime = 0.0;
+  double tottime  = 0.0;
   for(sys.nfi=1; sys.nfi <= sys.nsteps; ++sys.nfi) {
     /* write output, if requested */
     if ((sys.nfi % nprint) == 0 && sys.mpirank==0)
 	output(&sys, erg, traj);
-
+    
+    tmptime = seconds();
     if (sys.mpirank==0)
 	    update_velocities_positions(&sys);
 
@@ -143,14 +158,18 @@ int main(int argc, char **argv)
         update_velocities(&sys);
 		ekin(&sys);
 	}
+  exectime += seconds() - tmptime;
 }
 
 
   /**************************************************/
 
+  MPI_Reduce(&exectime, &tottime, 1, MPI_DOUBLE, MPI_MAX, 0, sys.mpicomm);
+
   /* clean up: close files, free memory */
   if(sys.mpirank==0){
     printf("Simulation Done.\n");
+    printf("Execution time[s]: %lf\n",tottime);
     
     fclose(erg);
     fclose(traj);

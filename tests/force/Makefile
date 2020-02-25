@@ -9,7 +9,7 @@ IDIR := ../../inc
 ODIR := ../../obj
 
 CC := mpicc
-CFLAGS := -Wall -g -O3 -ffast-math -fomit-frame-pointer -fopenmp -I $(IDIR)
+CFLAGS := -Wall -g -O3 -ffast-math -fomit-frame-pointer -fopenmp -I $(IDIR) -D_MPI
 LDLIBS := -lm -lljmd -fopenmp
 LDFLAGS :=  -L $(ODIR)
 

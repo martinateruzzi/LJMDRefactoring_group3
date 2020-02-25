@@ -25,7 +25,7 @@ struct _mdsys {
   double *vx, *vy, *vz;
   double *fx, *fy, *fz;
   double *cx, *cy, *cz;
-  int nsize, mpirank,nprocs, nthreads;
+  int mpirank, nprocs, nthreads;
   MPI_Comm mpicomm;
 };
 typedef struct _mdsys mdsys_t;
