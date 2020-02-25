@@ -225,6 +225,7 @@ class Ljmd:
         if(self.sys.mpirank == 0):
             self.loadrest()
         self.comm.barrier()
+        self.mpiprint("System initialized.")
     
     def loadrest(self):
         """Loads restart file and initializes positions and velocities."""
@@ -252,13 +253,15 @@ class Ljmd:
             self.sys.ekin+self.sys.epot)
         print(_ergstr)
         try:
-            with open("results/"+self.ergfile, "a+") as file:
+            _ergpath = "results/"+self.ergfile
+            with open(_ergpath, "a+") as file:
                 file.write(_ergstr+"\n")
         except Exception as err:
             print("Error writing to file: {}".format(str(err)))
 
         try:
-            with open("results/"+self.trajfile, "a+") as file:
+            _trajpath = "results/"+self.trajfile
+            with open(_trajpath, "a+") as file:
                 file.write("\nnfi = {} \t etot = {:.8}\n".format(
                     self.sys.nfi, self.sys.ekin+self.sys.epot))
                 for i in range(self.sys.natoms):
@@ -297,7 +300,6 @@ class Ljmd:
         """
         self.sys.nfi = 0
         self.force()
-        self.mpiprint("System initialized.")
         if (self.sys.mpirank == 0):
             self.ekin()
             print("Starting simulation with {} atoms for {} steps.\n".format(
@@ -327,4 +329,10 @@ class Ljmd:
 
 if __name__ == '__main__':
     md = Ljmd("argon_108.inp")
+    """clean up result files before executing"""
+    if md.sys.mpirank == 0:
+        if os.path.exists("results/"+md.ergfile):
+            os.remove("results/"+md.ergfile)
+        if os.path.exists("results/"+md.trajfile):
+            os.remove("results/"+md.trajfile)
     md.runompisim()
