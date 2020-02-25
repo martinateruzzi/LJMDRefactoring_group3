@@ -198,6 +198,12 @@ class Ljmd:
 
     def velverlet(self):
         self._dll.velverlet(byref(self.sys))
+
+    def update_velocities_positions(self):
+        self._dll.update_velocities_positions(byref(self.sys))
+
+    def update_velocities(self):
+        self._dll.update_velocities(byref(self.sys))
     
     def runsimulation(self):
         """Run simulation of the system.
