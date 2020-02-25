@@ -328,7 +328,7 @@ class Ljmd:
         self.mpiprint("Execution time[s]: {}".format(_redtime))
 
 if __name__ == '__main__':
-    md = Ljmd("argon_108.inp")
+    md = Ljmd("argon_2916.inp")
     """clean up result files before executing"""
     if md.sys.mpirank == 0:
         if os.path.exists("results/"+md.ergfile):
