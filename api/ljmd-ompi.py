@@ -71,6 +71,27 @@ class Mdsys(Structure):
         pointer to the array of y velocities of the system
     fz: pointer(double)
         pointer to the array of z velocities of the system
+    cx: pointer(double)
+        pointer to the array of x forces of the system 
+        for each process, later will be reduced from all
+        processes to fx
+    cy: pointer(double)
+        pointer to the array of y forces of the system 
+        for each process, later will be reduced from all
+        processes to fy
+    cz: pointer(double)
+        pointer to the array of z forces of the system 
+        for each process, later will be reduced from all
+        processes to fz
+    mpirank: int
+        rank of each mpi process
+    nprocs: int
+        total number of mpi processes
+    nthreads: int
+        number of openmp threads, read from enviromental 
+        variable OMP_NUM_THREADS, if not there defaults to 1
+    mpicomm: MPI_COMM
+        mpi communicator struct type
     """
     _fields_ = [
         ("natoms", c_int),
@@ -120,16 +141,16 @@ class Ljmd:
 
         """
         self.initfile = initfile
-        try:
-            self._dll = CDLL("../obj/libljmd.so")
-            print("Shared object loaded.")
-        except Exception as err:
-            print("Could not load shared object: {}".format(str(err)))
-            _sys.exit(1)
         self.sys = Mdsys()
         self.initompi()
         self.loadinit()
         self.sysinit()
+        try:
+            self._dll = CDLL("../obj/libljmd.so")
+            self.mpiprint("Shared object loaded.")
+        except Exception as err:
+            self.mpiprint("Could not load shared object: {}".format(str(err)))
+            _sys.exit(1)
 
     def loadinit(self):
         """Load initialization file."""
@@ -138,7 +159,7 @@ class Ljmd:
                 with open("inits/"+self.initfile, 'r') as file:
                     self.args = [line.split("#",1)[0].rstrip() for line in file]
             except Exception as err:
-                print("Error reading init file: {}".format(str(err)))
+                self.mpiprint("Error reading init file: {}".format(str(err)))
                 _sys.exit(1)
             self.sys.natoms = int(self.args[0])
             self.sys.mass = float(self.args[1])
@@ -152,7 +173,7 @@ class Ljmd:
             self.sys.nsteps = int(self.args[9])
             self.sys.dt = float(self.args[10])
             self.nprint = int(self.args[11])
-            print("\nLoaded init file.")
+            self.mpiprint("\nLoaded init file.")
         self.sys.natoms = self.comm.bcast(self.sys.natoms, root=0)
         self.sys.mass = self.comm.bcast(self.sys.mass, root=0)
         self.sys.epsilon = self.comm.bcast(self.sys.epsilon, root=0)
@@ -161,6 +182,7 @@ class Ljmd:
         self.sys.box = self.comm.bcast(self.sys.box, root=0)
         self.sys.nsteps = self.comm.bcast(self.sys.nsteps, root=0)
         self.sys.dt = self.comm.bcast(self.sys.dt, root=0)
+
     def initompi(self):
         """Handle OpenMP and MPI initialization"""
         self.comm = MPI.COMM_WORLD
@@ -172,9 +194,9 @@ class Ljmd:
         try:
             _omp_num_threads = int(os.environ['OMP_NUM_THREADS'])
         except Exception as err:
-            print("Couldn't read enviromental variable OMP_NUM_THREADS: {}"
+            self.mpiprint("Couldn't read enviromental variable OMP_NUM_THREADS: {}"
                 .format(str(err)))
-            print("Setting OMP_NUM_THREADS = 1")
+            self.mpiprint("Setting OMP_NUM_THREADS = 1")
             _omp_num_threads = 1
         self.sys.nthreads = _omp_num_threads
 
@@ -192,10 +214,10 @@ class Ljmd:
         self.sys.vx = (c_double * self.sys.natoms)()
         self.sys.vy = (c_double * self.sys.natoms)()
         self.sys.vz = (c_double * self.sys.natoms)()
-        length = self.sys.natoms * self.sys.nthreads
-        self.sys.cx = (c_double * length)()
-        self.sys.cy = (c_double * length)()
-        self.sys.cz = (c_double * length)()
+        _length = self.sys.natoms * self.sys.nthreads
+        self.sys.cx = (c_double * _length)()
+        self.sys.cy = (c_double * _length)()
+        self.sys.cz = (c_double * _length)()
         if (self.sys.mpirank == 0):
             self.sys.fx = (c_double * self.sys.natoms)()
             self.sys.fy = (c_double * self.sys.natoms)()
@@ -203,53 +225,7 @@ class Ljmd:
         if(self.sys.mpirank == 0):
             self.loadrest()
         self.comm.barrier()
-        self.sys.nfi = 0
-        self.force()
-        print("System initialized.")
-        if (self.sys.mpirank == 0):
-            self.ekin()
-            print("\nStarting simulation with {} atoms for {} steps.".format(
-                self.sys.natoms, self.sys.nsteps))
-            print("NFI \t\t\t TEMP \t\t EKIN \t\t  EPOT \t\t\t ETOT")
-            self.output()
-
-    def force(self):
-        self._dll.force(byref(self.sys))
-
-    def ekin(self):
-        self._dll.ekin(byref(self.sys))
-
-    def velverlet(self):
-        self._dll.velverlet(byref(self.sys))
-
-    def update_velocities_positions(self):
-        self._dll.update_velocities_positions(byref(self.sys))
-
-    def update_velocities(self):
-        self._dll.update_velocities(byref(self.sys))
     
-    def runompisim(self):
-        """Run simulation of the system.
-
-        This method in turn will call velverlet and ekin function
-        on the C side. it will evolve the system for nstep times.
-
-        """
-        self.sys.nfi = 1
-        while self.sys.nfi <= self.sys.nsteps:
-            if(self.sys.mpirank == 0):
-                if(self.sys.nfi % self.nprint == 0):
-                    self.output()
-            if(self.sys.mpirank == 0):
-                self.update_velocities_positions()
-            self.force()
-            if(self.sys.mpirank == 0):
-                self.update_velocities()
-                self.ekin()
-            self.sys.nfi += 1
-        if(self.sys.mpirank == 0):
-            print("Simulation done!")
-
     def loadrest(self):
         """Loads restart file and initializes positions and velocities."""
         try:
@@ -292,6 +268,56 @@ class Ljmd:
         except Exception as err:
             print("Error writing to file: {}".format(str(err)))
 
+    def mpiprint(self, msg):
+        """Helper method to print messages"""
+        if self.sys.mpirank == 0:
+            print(msg)
+    
+    def force(self):
+        self._dll.force(byref(self.sys))
+
+    def ekin(self):
+        self._dll.ekin(byref(self.sys))
+
+    def velverlet(self):
+        self._dll.velverlet(byref(self.sys))
+
+    def update_velocities_positions(self):
+        self._dll.update_velocities_positions(byref(self.sys))
+
+    def update_velocities(self):
+        self._dll.update_velocities(byref(self.sys))
+
+    def runompisim(self):
+        """Run simulation of the system.
+
+        This method in turn will call velverlet and ekin function
+        on the C side. it will evolve the system for nstep times.
+
+        """
+        self.sys.nfi = 0
+        self.force()
+        self.mpiprint("System initialized.")
+        if (self.sys.mpirank == 0):
+            self.ekin()
+            print("Starting simulation with {} atoms for {} steps.\n".format(
+                self.sys.natoms, self.sys.nsteps))
+            print("NFI \t\t\t TEMP \t\t EKIN \t\t  EPOT \t\t\t ETOT")
+            self.output()
+
+        self.sys.nfi = 1
+        while self.sys.nfi <= self.sys.nsteps:
+            if(self.sys.mpirank == 0):
+                if(self.sys.nfi % self.nprint == 0):
+                    self.output()
+            if(self.sys.mpirank == 0):
+                self.update_velocities_positions()
+            self.force()
+            if(self.sys.mpirank == 0):
+                self.update_velocities()
+                self.ekin()
+            self.sys.nfi += 1
+        self.mpiprint("\nSimulation done!")
 
 if __name__ == '__main__':
     md = Ljmd("argon_003.inp")
