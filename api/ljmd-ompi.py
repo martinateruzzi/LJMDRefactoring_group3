@@ -1,7 +1,7 @@
 from __future__ import print_function
-import sys as _sys
 from ctypes import *
 from mpi4py import MPI
+from time import time
 import os
 
 """ ljmd.py: Wrapper for ljmd.c code
@@ -150,7 +150,24 @@ class Ljmd:
             self.mpiprint("Shared object loaded.")
         except Exception as err:
             self.mpiprint("Could not load shared object: {}".format(str(err)))
-            _sys.exit(1)
+            os._exit(1)
+
+    def initompi(self):
+        """Handle OpenMP and MPI initialization"""
+        self.comm = MPI.COMM_WORLD
+        _comm_ptr = MPI._addressof(self.comm)
+        _comm_val = MPI_Comm.from_address(_comm_ptr)
+        self.sys.mpicomm = _comm_val
+        self.sys.mpirank = self.comm.Get_rank()
+        self.sys.nprocs = self.comm.Get_size()
+        try:
+            _omp_num_threads = int(os.environ['OMP_NUM_THREADS'])
+        except Exception as err:
+            self.mpiprint("Couldn't read enviromental variable OMP_NUM_THREADS: {}"
+                .format(str(err)))
+            self.mpiprint("Setting OMP_NUM_THREADS = 1")
+            _omp_num_threads = 1
+        self.sys.nthreads = _omp_num_threads
 
     def loadinit(self):
         """Load initialization file."""
@@ -160,7 +177,7 @@ class Ljmd:
                     self.args = [line.split("#",1)[0].rstrip() for line in file]
             except Exception as err:
                 self.mpiprint("Error reading init file: {}".format(str(err)))
-                _sys.exit(1)
+                os._exit(1)
             self.sys.natoms = int(self.args[0])
             self.sys.mass = float(self.args[1])
             self.sys.epsilon = float(self.args[2])
@@ -182,23 +199,6 @@ class Ljmd:
         self.sys.box = self.comm.bcast(self.sys.box, root=0)
         self.sys.nsteps = self.comm.bcast(self.sys.nsteps, root=0)
         self.sys.dt = self.comm.bcast(self.sys.dt, root=0)
-
-    def initompi(self):
-        """Handle OpenMP and MPI initialization"""
-        self.comm = MPI.COMM_WORLD
-        _comm_ptr = MPI._addressof(self.comm)
-        _comm_val = MPI_Comm.from_address(_comm_ptr)
-        self.sys.mpicomm = _comm_val
-        self.sys.mpirank = self.comm.Get_rank()
-        self.sys.nprocs = self.comm.Get_size()
-        try:
-            _omp_num_threads = int(os.environ['OMP_NUM_THREADS'])
-        except Exception as err:
-            self.mpiprint("Couldn't read enviromental variable OMP_NUM_THREADS: {}"
-                .format(str(err)))
-            self.mpiprint("Setting OMP_NUM_THREADS = 1")
-            _omp_num_threads = 1
-        self.sys.nthreads = _omp_num_threads
 
     def sysinit(self):
         """Initialize system as Mdsys instance.
@@ -243,7 +243,7 @@ class Ljmd:
                     self.sys.vz[i] = float(line[i+self.sys.natoms].rstrip().split()[2])
         except Exception as err:
             print("Could not read restart file: {}".format(str(err)))
-            _sys.exit(1)
+            os._exit(1)
 
     def output(self):
         """Write energy and positions results to given files."""
@@ -305,11 +305,14 @@ class Ljmd:
             print("NFI \t\t\t TEMP \t\t EKIN \t\t  EPOT \t\t\t ETOT")
             self.output()
 
+        _exetime = 0.0
+        _redtime = 0.0
         self.sys.nfi = 1
         while self.sys.nfi <= self.sys.nsteps:
             if(self.sys.mpirank == 0):
                 if(self.sys.nfi % self.nprint == 0):
                     self.output()
+            _exetime -= time()
             if(self.sys.mpirank == 0):
                 self.update_velocities_positions()
             self.force()
@@ -317,8 +320,11 @@ class Ljmd:
                 self.update_velocities()
                 self.ekin()
             self.sys.nfi += 1
+            _exetime += time()
         self.mpiprint("\nSimulation done!")
+        _redtime = self.comm.reduce(_exetime, op=MPI.MAX, root=0)
+        self.mpiprint("Execution time[s]: {}".format(_redtime))
 
 if __name__ == '__main__':
-    md = Ljmd("argon_003.inp")
-    md.runompisim()    
+    md = Ljmd("argon_108.inp")
+    md.runompisim()
